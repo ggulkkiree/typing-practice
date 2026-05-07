@@ -4,16 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>특수교육 타자 마스터 PRO</title>
-    <script src="[https://cdn.jsdelivr.net/npm/chart.js](https://cdn.jsdelivr.net/npm/chart.js)"></script>
-    <link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css)">
-    <!-- 외부 분리된 CSS 파일 연결 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <span id="server-status">☁️ 구글 서버 확인 중...</span>
     <button id="admin-btn" style="display:none;">⚙️ 교사 설정</button>
 
-    <!-- 모달(팝업) -->
     <div id="modal-overlay" class="modal-overlay hidden">
         <div id="pw-modal" class="modal-box hidden">
             <h3 id="pw-modal-title" style="font-size:24px; color:#FF6B35; font-weight:900;">관리자 비밀번호</h3>
@@ -36,7 +34,6 @@
             <button id="ticket-modal-ok">확인하고 계속하기</button>
         </div>
         
-        <!-- ✨ AI 생성 모달 ✨ -->
         <div id="ai-modal" class="modal-box hidden" style="width: 550px;">
             <h2 style="font-size:28px; color:#8B5CF6; margin-bottom:15px;">✨ AI 긍정 단어/문장 생성기</h2>
             <p style="font-size:16px; color:#3D2B1F; font-weight:700; margin-bottom:20px;">AI가 아이들을 위한 아름답고 희망찬<br>타자 연습 내용을 자동으로 만들어줍니다!</p>
@@ -52,14 +49,12 @@
         </div>
     </div>
 
-    <!-- [로딩 화면] -->
     <div id="loading-screen" class="screen active" style="margin-top: 20vh;">
         <div class="loader"></div>
         <h1 style="font-size: 40px;">데이터 불러오는 중...</h1>
         <p style="font-size: 20px; color: #888; font-weight: bold;">잠시만 기다려주세요!</p>
     </div>
 
-    <!-- [화면 1] 학생 로그인 -->
     <div id="student-login-screen" class="screen hidden">
         <h1 style="font-size: 60px;">⌨️ 타자 마스터 PRO</h1>
         <p style="font-size:22px; font-weight:900; color:#5BC044; margin-bottom:30px;">🏫 우리 반 구글 시트 연동 모드</p>
@@ -80,7 +75,6 @@
         <button id="student-login-btn" disabled>연습장 입장하기</button>
     </div>
 
-    <!-- [화면 2] 학생 메뉴 -->
     <div id="student-menu-screen" class="screen hidden">
         <div class="class-goal-container">
             <div class="class-goal-text">🔥 우리 반 공동 목표: [<span id="class-reward-display-menu">상상체험실 가기</span>]</div>
@@ -102,7 +96,6 @@
         </div>
     </div>
 
-    <!-- [화면 2.5] 학생 개인 컬렉션 (My Page) -->
     <div id="slide-profile" class="screen hidden">
         <h2 style="font-size: 42px; margin-top: 0; color: #FF6B35; text-shadow: 2px 2px 0 #FFE485;">🏆 <span id="profile-student-name"></span>의 명예의 전당</h2>
         <div style="font-size: 22px; font-weight: 900; background: #FFF7D6; padding: 12px 25px; border-radius: 20px; display: inline-block; border: 4px solid #FFE485; margin-bottom: 20px; color: #3D2B1F;">
@@ -112,7 +105,6 @@
         <button id="back-from-profile-btn" style="width:300px; margin-top:30px;" class="secondary-btn">메뉴로 돌아가기</button>
     </div>
 
-    <!-- [화면 3] 타자 연습 -->
     <div id="practice-screen" class="screen hidden">
         <div class="class-goal-container" style="padding: 15px; margin-bottom: 20px;">
             <div class="class-goal-bar-bg" style="height:25px;">
@@ -144,7 +136,6 @@
             <input type="text" id="hidden-ime-clear" style="position:absolute; opacity:0; width:1px; height:1px;" tabindex="-1">
             <div id="feedback-msg"></div>
             
-            <!-- 가상 키보드 -->
             <div class="keyboard-container" id="virtual-keyboard">
                 <div class="key-row">
                     <div class="key left-hand" data-key="q"><span class="key-kor">ㅂ</span><span class="key-eng">Q</span></div>
@@ -188,7 +179,6 @@
         </div>
     </div>
 
-    <!-- [화면 4] 결과 화면 -->
     <div id="result-screen" class="screen hidden">
         <h2>🎉 연습 완료!</h2>
         <div class="result-content">
@@ -200,7 +190,6 @@
         <button id="back-to-menu-btn" style="width:300px; margin-top:20px;">메뉴로 돌아가기</button>
     </div>
 
-    <!-- [화면 5] 관리자 화면 -->
     <div id="admin-screen" class="screen hidden">
         <h2>👨‍🏫 교사 대시보드 PRO</h2>
         <div class="admin-controls">
@@ -234,8 +223,7 @@
         </table>
     </div>
 
-    <script src="[https://unpkg.com/hangul-js](https://unpkg.com/hangul-js)" type="text/javascript"></script>
-    <!-- 외부 분리된 JS 파일 연결 -->
+    <script src="https://unpkg.com/hangul-js" type="text/javascript"></script>
     <script src="script.js"></script>
 </body>
 </html>
