@@ -1,399 +1,160 @@
-/* =========================================
-   [1] 기본 초기화 및 화면 레이아웃
-========================================= */
-* {
-    box-sizing: border-box;
-    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+@import url('[https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap](https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap)');
+
+* { box-sizing: border-box; font-family: 'Noto Sans KR', sans-serif; }
+
+body { 
+    background: #FFF7D6; display: flex; justify-content: center; align-items: center; 
+    min-height: 100vh; margin: 0; color: #3D2B1F; overflow-x: hidden;
 }
 
-body {
-    background-color: #f4f7f6;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
+.screen { 
+    background: #FFFFFF; padding: 50px 40px; border-radius: 32px; 
+    border: 4px solid #FFE485; box-shadow: 0 20px 0 #F5D35A, 0 25px 30px rgba(61, 43, 31, 0.15); 
+    width: 100%; max-width: 1250px; text-align: center; display: none; margin: 40px 0; position: relative;
 }
+.screen.active { display: block; animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
 
-.screen {
-    background: white;
-    padding: 40px;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    width: 100%;
-    max-width: 950px; 
-    text-align: center;
-    display: none;
+@keyframes bounceIn { 0% { opacity: 0; transform: scale(0.9) translateY(20px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+
+#admin-btn { 
+    position: absolute; top: 20px; right: 20px; background: #FFE485; color: #3D2B1F; 
+    border: none; padding: 12px 20px; border-radius: 50px; cursor: pointer; z-index: 10; 
+    font-weight: 900; font-size: 16px; box-shadow: 0 4px 0 #F5D35A; transition: all 0.1s;
 }
+#admin-btn:hover { transform: translateY(2px); box-shadow: 0 2px 0 #F5D35A; }
+#admin-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #F5D35A; }
 
-.screen.active {
-    display: block;
+h1 { color: #FF6B35; font-weight: 900; font-size: 46px; margin-bottom: 10px; text-shadow: 2px 2px 0 #FFE485; }
+h2 { color: #3D2B1F; font-weight: 900; }
+
+.form-group { margin-bottom: 24px; text-align: left; }
+label { display: block; margin-bottom: 10px; font-weight: 900; color: #FF6B35; font-size: 18px; }
+select, input[type="text"], input[type="password"], input[type="number"] { 
+    width: 100%; padding: 18px; border: 4px solid #FFE485; border-radius: 16px; 
+    font-size: 20px; font-weight: 700; transition: all 0.2s; background: #FFF7D6; color: #3D2B1F;
 }
+select:focus, input:focus { outline: none; border-color: #5BC044; background: #FFFFFF; }
 
-#admin-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: #6c757d;
-    color: white;
-    border: none;
-    padding: 10px 15px;
-    border-radius: 8px;
-    cursor: pointer;
-    z-index: 10;
+button { 
+    width: 100%; padding: 20px; background: #5BC044; color: white; border: none; border-radius: 20px; 
+    font-size: 24px; font-weight: 900; cursor: pointer; margin-top: 10px; box-shadow: 0 8px 0 #469E33; transition: all 0.1s;
 }
+button:hover { background: #68D14E; transform: translateY(3px); box-shadow: 0 5px 0 #469E33; }
+button:active { transform: translateY(8px); box-shadow: 0 0 0 #469E33; }
+button:disabled { background: #D1D1D1; box-shadow: 0 8px 0 #A8A8A8; color: #7A7A7A; cursor: not-allowed; transform: none; }
+button.secondary-btn { background: #FFCA28; color: #3D2B1F; box-shadow: 0 8px 0 #E5B217; }
+button.secondary-btn:hover { background: #FFD54F; box-shadow: 0 5px 0 #E5B217; transform: translateY(3px); }
+button.secondary-btn:active { box-shadow: 0 0 0 #E5B217; transform: translateY(8px); }
+button.delete-btn { background: #FF4757; box-shadow: 0 5px 0 #D93644; color: white; padding: 10px 16px; font-size: 16px; border-radius: 12px; margin: 0; width: auto;}
 
-h1, h2, h3 { 
-    color: #333; 
-}
+.rank-badge { display: inline-flex; align-items: center; justify-content: center; padding: 6px 14px; border-radius: 12px; font-weight: 900; font-size: 16px; margin-left: 10px; vertical-align: middle; }
+.rank-basic { background: #E2E8F0; color: #475569; border: 2px solid #CBD5E1; }
+.rank-lv1 { background: #D1FAE5; color: #065F46; border: 2px solid #10B981; }
+.rank-lv2 { background: #A7F3D0; color: #047857; border: 2px solid #059669; }
+.rank-lv3 { background: #6EE7B7; color: #064E3B; border: 2px solid #047857; }
+.rank-bronze { background: #FEF3C7; color: #B45309; border: 2px solid #F59E0B; }
+.rank-silver { background: #F1F5F9; color: #334155; border: 2px solid #94A3B8; }
+.rank-gold { background: #FFEDD5; color: #C2410C; border: 2px solid #F97316; box-shadow: 0 0 10px rgba(249, 115, 22, 0.5); }
+.rank-ace { background: #FAE8FF; color: #A21CAF; border: 2px solid #D946EF; box-shadow: 0 0 15px rgba(217, 70, 239, 0.6); animation: pulse-badge 1.5s infinite; }
+@keyframes pulse-badge { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
-/* =========================================
-   [2] 폼, 입력창, 버튼 공통 스타일
-========================================= */
-.form-group {
-    margin-bottom: 20px;
-    text-align: left;
-}
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-top: 10px; max-height: 450px; overflow-y: auto; padding: 15px; }
+.badge-card { background: #FFFFFF; border: 4px solid #EFEFEF; border-radius: 24px; padding: 25px 10px; text-align: center; box-shadow: 0 8px 0 #EFEFEF; transition: all 0.3s; }
+.badge-card.unlocked { border-color: #5BC044; box-shadow: 0 8px 0 #469E33; }
+.badge-icon { font-size: 45px; margin-bottom: 15px; }
+.badge-locked { filter: grayscale(100%) opacity(40%); }
+.badge-title { font-weight: 900; font-size: 18px; color: #3D2B1F; margin-bottom: 8px; }
+.badge-req { font-size: 14px; color: #8A8A8A; font-weight: 900; background: #FFF7D6; padding: 6px 10px; border-radius: 12px; display: inline-block; }
 
-.form-group.row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
+.class-goal-container { background: #FFFFFF; border: 4px solid #FFE485; border-radius: 20px; padding: 20px; margin-bottom: 25px; position: relative; }
+.class-goal-text { font-size: 22px; font-weight: 900; color: #3D2B1F; margin-bottom: 15px; }
+.class-goal-bar-bg { background: #FFF7D6; height: 35px; border-radius: 20px; border: 3px solid #FFE485; overflow: hidden; position: relative; }
+.class-goal-fill { background: linear-gradient(90deg, #5BC044, #86EFAC); height: 100%; width: 0%; transition: width 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.class-goal-percent { position: absolute; width: 100%; text-align: center; line-height: 29px; font-weight: 900; font-size: 16px; color: #3D2B1F; top: 0; left: 0; text-shadow: 1px 1px 0px rgba(255,255,255,0.7); }
 
-label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-}
+.mission-box { display: inline-block; background: #FFF0F2; padding: 15px 25px; border-radius: 16px; border: 3px solid #FF9EAA; font-size: 20px; font-weight: 900; color: #FF4757; margin-top: 15px; }
+.mission-box.completed { background: #E8F8E3; border-color: #A9DB9A; color: #5BC044; }
 
-select, input[type="text"] {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    font-size: 16px;
-}
+.header-info { display: flex; justify-content: space-between; align-items: center; background: #FFF7D6; padding: 20px 30px; border-radius: 24px; margin-bottom: 30px; border: 4px solid #FFE485; }
+.badge-group { display: flex; gap: 12px; align-items: center; }
+.stat-badge { padding: 10px 20px; border-radius: 20px; font-size: 18px; font-weight: 900; background: #FFFFFF; color: #3D2B1F; border: 3px solid #FFE485; box-shadow: 0 4px 0 #FFE485; }
+.stat-badge.wpm { background: #FFF4E5; color: #FF6B35; border-color: #FFB38A; box-shadow: 0 4px 0 #FFB38A; cursor: pointer; user-select: none; transition: all 0.2s;}
+.stat-badge.wpm:hover { filter: brightness(0.95); }
+.stat-badge.time { background: #E8F8E3; color: #5BC044; border-color: #A9DB9A; box-shadow: 0 4px 0 #A9DB9A;}
+.header-info button { width: auto; padding: 12px 24px; margin: 0; font-size: 18px; }
 
-button {
-    width: 100%;
-    padding: 15px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 18px;
-    font-weight: bold;
-    cursor: pointer;
-    margin-top: 10px;
-    transition: background-color 0.2s;
-}
+.practice-area { position: relative; }
+#target-text { font-size: 55px; margin-bottom: 15px; letter-spacing: 2px; font-weight: 900; color: #3D2B1F; }
+.char-typed { color: #C4C4C4; font-weight: 700; } 
+.char-current { color: #5BC044; font-weight: 900; border-bottom: 6px solid #5BC044; padding-bottom: 4px;} 
+.char-pending { color: #3D2B1F; font-weight: 700; } 
 
-button:hover {
-    filter: brightness(0.9);
-}
+#next-word-preview { font-size: 24px; color: #8A8A8A; margin-bottom: 25px; height: 35px; font-weight: 900;}
+#typing-input { font-size: 40px; text-align: center; font-weight: 900; border: 6px solid #FFE485; border-radius: 24px; padding: 20px; transition: all 0.2s; margin-bottom: 15px; background: #FFFFFF; color: #3D2B1F; }
+#typing-input:focus { border-color: #5BC044; background: #F8FFF6; }
+.text-error { color: #FF4757 !important; border-color: #FF4757 !important; background: #FFF0F2 !important; }
+#feedback-msg { font-size: 20px; font-weight: 900; min-height: 30px; margin-bottom: 30px; color: #FF6B35; }
 
-button:disabled { 
-    background-color: #cccccc; 
-    cursor: not-allowed; 
-}
+#combo-wrap { position: absolute; right: 20px; top: 0px; text-align: center; opacity: 0; transition: opacity 0.2s; transform: rotate(10deg); pointer-events: none;}
+#combo-count { font-size: 60px; font-weight: 900; color: #FF4757; text-shadow: 3px 3px 0 #FFE485; display: block; line-height: 1; }
+#combo-msg { font-size: 20px; font-weight: 900; color: #FF6B35; background: #FFF7D6; padding: 4px 12px; border-radius: 20px; border: 3px solid #FFE485;}
 
-button.secondary-btn { 
-    background-color: #ff9800; 
-}
+.practice-area.sentence-mode #target-text { font-size: 36px; line-height: 1.4; word-break: keep-all; }
+.practice-area.sentence-mode #typing-input { font-size: 28px; }
+.practice-area.sentence-mode #next-word-preview { font-size: 20px; }
 
-button.delete-btn { 
-    background-color: #f44336; 
-    padding: 5px 10px; 
-    font-size: 14px; 
-}
+.keyboard-container { background: #FFF7D6; padding: 30px 20px; border-radius: 32px; display: flex; flex-direction: column; gap: 14px; align-items: center; border: 4px solid #FFE485; }
+.key-row { display: flex; gap: 14px; justify-content: center; }
+.key { width: 85px; height: 85px; border-radius: 22px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #3D2B1F; background: #FFFFFF; box-shadow: 0 10px 0 #D1D1D1, 0 12px 10px rgba(0,0,0,0.1); transition: all 0.1s; position: relative; border: 2px solid #EFEFEF; }
+.key.left-hand { background: #E8F8E3; color: #5BC044; border-color: #C8EBBF; box-shadow: 0 10px 0 #A9DB9A, 0 12px 10px rgba(0,0,0,0.1); }
+.key.right-hand { background: #FFF1E6; color: #FF6B35; border-color: #FFD4BC; box-shadow: 0 10px 0 #FFBB96, 0 12px 10px rgba(0,0,0,0.1); }
+.key-eng { font-size: 18px; color: #A8A8A8; margin-top: 2px; font-weight: 900;}
+.key-kor { font-weight: 900; font-size: 36px; } 
+.key.wide { width: 130px; font-size: 20px; font-weight: 900; }
+.key.space { width: 450px; font-size: 22px; font-weight: 900; color: #A8A8A8; }
 
-/* =========================================
-   [3] 교사 관리자 페이지 (테이블)
-========================================= */
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-    font-size: 13px; 
-}
+@keyframes pulse-green { 0% { background: #5BC044; color: white; transform: translateY(10px); box-shadow: 0 0 0 #469E33; border-color: #5BC044; } 50% { background: #4DB336; color: white; transform: translateY(10px); box-shadow: 0 0 0 #469E33; border-color: #4DB336;} 100% { background: #5BC044; color: white; transform: translateY(10px); box-shadow: 0 0 0 #469E33; border-color: #5BC044;} }
+@keyframes pulse-red { 0% { background: #FF4757; color: white; transform: translateY(10px); box-shadow: 0 0 0 #D93644; border-color: #FF4757;} 50% { background: #E83A49; color: white; transform: translateY(10px); box-shadow: 0 0 0 #D93644; border-color: #E83A49;} 100% { background: #FF4757; color: white; transform: translateY(10px); box-shadow: 0 0 0 #D93644; border-color: #FF4757;} }
+.key.active { animation: pulse-green 0.5s infinite !important; }
+.key.active .key-eng, .key.active .key-kor { color: white; }
+.key.active-error { animation: pulse-red 0.5s infinite !important; }
+.key.active-error .key-eng, .key.active-error .key-kor { color: white; }
 
-th, td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: center;
-    vertical-align: middle;
-}
+.result-wpm { font-size: 90px; font-weight: 900; color: #FF6B35; margin: 15px 0; text-shadow: 3px 3px 0 #FFE485;}
+.result-acc { font-size: 36px; font-weight: 900; color: #5BC044; margin-bottom: 20px; }
 
-th { 
-    background-color: #f8f9fa; 
-}
+.menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 40px 0; }
+.menu-grid button { padding: 40px; font-size: 30px; border-radius: 28px; background: #FFFFFF; color: #FF6B35; border: 4px solid #FFE485; box-shadow: 0 12px 0 #F5D35A;}
 
-.stats-col { 
-    color: #2196F3; 
-    font-weight: bold; 
-}
-
-.weak-col { 
-    color: #f44336; 
-    font-weight: bold; 
-}
-
-.diagnosis-col { 
-    color: #4CAF50; 
-    font-weight: bold; 
-    text-align: left; 
-}
-
-.admin-controls { 
-    display: flex; 
-    justify-content: flex-end; 
-    gap: 10px; 
-    margin-bottom: 20px; 
-    flex-wrap: wrap; 
-}
-
-.admin-controls button { 
-    width: auto; 
-    margin-top: 0; 
-    padding: 8px 16px; 
-    font-size: 14px; 
-}
-
-.form-group.row select, .form-group.row input[type="text"] { 
-    flex: 1; 
-    margin-bottom: 0; 
-}
-
-.form-group.row button { 
-    width: auto; 
-    margin-top: 0; 
-    white-space: nowrap; 
-    padding: 0 25px; 
-}
-
-td select { 
-    width: auto; 
-    padding: 6px 10px; 
-    font-size: 14px; 
-}
-
-.checkbox-label { 
-    display: inline-flex; 
-    align-items: center; 
-    margin-right: 8px; 
-    font-weight: normal; 
-    font-size: 13px; 
-    cursor: pointer; 
-}
-
-.checkbox-label input { 
-    margin-right: 3px; 
-    width: 14px; 
-    height: 14px; 
-    cursor: pointer; 
-}
-
-/* =========================================
-   [4] 타자 연습 화면 UI 및 상단 계기판
-========================================= */
-.menu-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin: 30px 0;
-}
-
-.header-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #e9ecef;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    font-weight: bold;
-}
-
-.badge-group {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.badge { 
-    background-color: #2196F3; 
-    color: white; 
-    padding: 5px 12px; 
-    border-radius: 20px; 
-    font-size: 14px; 
-}
-
-.badge.accuracy { background-color: #9C27B0; }
-.badge.wpm { background-color: #FF9800; }
-.badge.combo { background-color: #f44336; font-weight: bold; }
-
-.header-info button { 
-    width: auto; 
-    padding: 5px 15px; 
-    margin: 0; 
-}
-
-/* =========================================
-   [5] 타자 입력창 및 글자 하이라이팅
-========================================= */
-#target-text {
-    font-size: 36px;
-    margin-bottom: 5px;
-    letter-spacing: 2px;
-    color: #333;
-    transition: all 0.1s;
-}
-
-.char-typed { color: #ccc; } 
-.char-current { color: #4CAF50; font-weight: 900; border-bottom: 3px solid #4CAF50; } 
-.char-pending { color: #333; } 
-
-#next-word-preview {
-    font-size: 18px;
-    color: #888;
-    margin-bottom: 15px;
-    height: 24px;
-    font-weight: normal;
-}
-
-#typing-input {
-    font-size: 28px;
-    text-align: center;
-    border: 3px solid #4CAF50;
-    transition: border-color 0.2s;
-    margin-bottom: 10px;
-}
-
-.text-error { 
-    color: red !important; 
-    border-color: red !important; 
-    outline: none; 
-}
-
-#feedback-msg {
-    font-size: 16px;
-    font-weight: bold;
-    min-height: 24px;
-    margin-bottom: 15px;
-}
-
-/* 흔들림 애니메이션 (오타 발생 시) */
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
-}
-
-.shake { 
-    animation: shake 0.2s ease-in-out; 
-}
-
-/* =========================================
-   [6] 가상 키보드 가이드 (좌/우 분리 색상 포함)
-========================================= */
-.keyboard-container {
-    background: #e9ecef;
-    padding: 15px 10px;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    align-items: center;
-    box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
-}
-
-.key-row {
-    display: flex;
-    gap: 6px;
-    justify-content: center;
-}
-
-.key {
-    width: 42px;
-    height: 42px;
-    border-radius: 6px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    font-size: 14px;
-    color: #444;
-    box-shadow: 0 3px 0 #bbb;
-    transition: all 0.1s;
-}
-
-.key.left-hand { background: #E3F2FD; border-top: 2px solid #BBDEFB; }
-.key.right-hand { background: #FFF3E0; border-top: 2px solid #FFE0B2; }
-.key.neutral { background: #fff; }
-
-.key-eng { font-size: 10px; color: #888; margin-top: -2px; }
-.key-kor { font-weight: bold; font-size: 15px; }
-
-.key.wide { width: 65px; font-size: 13px;}
-.key.space { width: 250px; font-size: 13px;}
-
-/* 키보드 깜빡임(Pulse) 애니메이션 */
-@keyframes pulse-green {
-    0% { background: #4CAF50; color: white; transform: translateY(2px); box-shadow: 0 1px 0 #388E3C; }
-    50% { background: #66BB6A; color: white; transform: translateY(2px); box-shadow: 0 1px 0 #388E3C; }
-    100% { background: #4CAF50; color: white; transform: translateY(2px); box-shadow: 0 1px 0 #388E3C; }
-}
-
-@keyframes pulse-red {
-    0% { background: #f44336; color: white; transform: translateY(2px); box-shadow: 0 1px 0 #d32f2f; }
-    50% { background: #ef5350; color: white; transform: translateY(2px); box-shadow: 0 1px 0 #d32f2f; }
-    100% { background: #f44336; color: white; transform: translateY(2px); box-shadow: 0 1px 0 #d32f2f; }
-}
-
-.key.active { animation: pulse-green 1s infinite !important; border: none !important; }
-.key.active .key-eng { color: #e8f5e9; }
-.key.active-error { animation: pulse-red 1s infinite !important; border: none !important; }
-.key.active-error .key-eng { color: #ffebee; }
-
-/* =========================================
-   [7] 모달 팝업 및 결과창
-========================================= */
-.modal-overlay {
-    position: fixed; 
-    top: 0; left: 0; 
-    width: 100vw; height: 100vh;
-    background: rgba(0, 0, 0, 0.6); 
-    display: flex; 
-    justify-content: center; 
-    align-items: center;
-    z-index: 9999;
-}
-
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(61, 43, 31, 0.6); display: flex; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(5px); }
 .modal-overlay.hidden { display: none !important; }
-
-.modal-box { 
-    background: white; 
-    padding: 30px; 
-    border-radius: 12px; 
-    width: 320px; 
-    text-align: center; 
-    box-shadow: 0 5px 20px rgba(0,0,0,0.3); 
-}
-
+.modal-box { background: #FFFFFF; padding: 40px; border-radius: 32px; width: 400px; text-align: center; box-shadow: 0 25px 0 rgba(61, 43, 31, 0.2); border: 6px solid #FFE485;}
 .modal-box.hidden { display: none !important; }
-
-.modal-box h3 { margin-top: 0; margin-bottom: 20px; }
-.modal-box input { margin-bottom: 20px; text-align: center; }
 .modal-buttons { display: flex; gap: 10px; }
-.modal-buttons button { margin-top: 0; }
 
-.result-content { margin: 40px 0; }
-.result-wpm { font-size: 48px; font-weight: bold; color: #FF9800; margin: 10px 0; }
-.result-acc { font-size: 32px; font-weight: bold; color: #9C27B0; margin-bottom: 20px; }
+.ticket-box { background: #FFF; border: 6px dashed #FF6B35; border-radius: 20px; padding: 30px; margin: 20px 0; background-color: #FFF4E5; }
+.ticket-title { font-size: 28px; color: #FF4757; font-weight: 900; margin-bottom: 10px; }
+.ticket-desc { font-size: 18px; color: #3D2B1F; font-weight: 700; }
 
-#server-status { 
-    font-weight: bold; 
-    margin-bottom: 10px; 
-    color: #4CAF50; 
-}
+.chart-container { width: 100%; height: 350px; background: #FFFFFF; border-radius: 24px; padding: 25px; margin-bottom: 30px; border: 4px solid #FFE485; box-shadow: 0 10px 0 #F5D35A; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 15px; font-size: 16px; border-radius: 20px; overflow: hidden; border: 4px solid #FFE485; background: #FFFFFF;}
+th, td { padding: 18px; text-align: center; vertical-align: middle; border-bottom: 2px solid #FFE485; }
+th { background-color: #FFF7D6; color: #FF6B35; font-weight: 900; font-size: 17px; }
+tr:last-child td { border-bottom: none; }
+.admin-controls { display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 30px; flex-wrap: wrap; }
+.admin-controls button { width: auto; margin-top: 0; padding: 15px 24px; font-size: 16px; border-radius: 16px; }
+
+.mission-panel select, .mission-panel input { padding: 8px; font-size: 14px; border-radius: 10px; border: 3px solid #FFE485; width: 100%; font-weight: 700;}
+.mission-panel input { width: 70px; display: inline-block; }
+
+/* ✨ AI 기능 스타일 ✨ */
+.ai-btn { background: #8B5CF6; color: white; box-shadow: 0 6px 0 #6D28D9; border: none; font-weight: 900; position: relative; overflow: hidden; }
+.ai-btn:hover { background: #7C3AED; box-shadow: 0 4px 0 #6D28D9; transform: translateY(2px); }
+.ai-btn:active { box-shadow: 0 0 0 #6D28D9; transform: translateY(6px); }
+.ai-feedback-box { background: #F5F3FF; border: 3px dashed #A78BFA; border-radius: 12px; padding: 15px; margin-top: 10px; font-size: 14px; color: #4C1D95; font-weight: 700; display: none; line-height: 1.5; }
+
+/* 로딩 스크린 애니메이션 */
+.loader { border: 10px solid #FFF7D6; border-top: 10px solid #5BC044; border-radius: 50%; width: 80px; height: 80px; animation: spin 1s linear infinite; margin: 0 auto 30px auto; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+#server-status { background: #5BC044; color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; font-weight: bold; position: absolute; top: 20px; left: 20px; box-shadow: 0 3px 0 #469E33;}
