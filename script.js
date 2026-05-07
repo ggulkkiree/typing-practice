@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ====================================================
     // 🚨 선생님 설정 구역 (완벽 장착 완료!)
     // ====================================================
-    const GAS_URL = "[https://script.google.com/macros/s/AKfycbylhO3hpeUbsbcq2_5z63gBbSmlxwxY01hPXkJGtuNA-TerbepGwDJ_Q6hT7aMJsA2DJg/exec)"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbylhO3hpeUbsbcq2_5z63gBbSmlxwxY01hPXkJGtuNA-TerbepGwDJ_Q6hT7aMJsA2DJg/exec"; 
     const apiKey = "AIzaSyAaCCMo_6N3Lhct_3IATBWqnqvfE3xrIpE"; 
     // ====================================================
 
