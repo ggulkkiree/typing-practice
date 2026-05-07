@@ -1,4 +1,5 @@
-@import url('[https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap](https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap)');
+/* 수정된 부분: 마크다운 괄호 오류 제거 및 폰트 주소 정상화 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
 
 * { box-sizing: border-box; font-family: 'Noto Sans KR', sans-serif; }
 
