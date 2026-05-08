@@ -30,10 +30,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             let data = await response.json();
             
             if(data && Object.keys(data).length > 0) {
-                if(data.studentData) studentData = data.studentData;
-                if(data.classData) classData = data.classData;
+                if(data.studentData && Object.keys(data.studentData).length > 0) studentData = data.studentData;
+                if(data.classData && Object.keys(data.classData).length > 0) classData = data.classData;
                 if(data.adminPassword) adminPassword = data.adminPassword;
             }
+            
+            // 🚨 [핵심 수정] 구글 시트가 완전히 비어있을 때(초기 상태) 화면이 멈추는 것을 방지하는 안전 장치
+            if (!classData["1학년 1반"]) classData["1학년 1반"] = { current: 0, target: 5000, reward: "상상체험실 가기", indivReward: "자유 휴식권", lastLoginDate: '' };
+            if (!classData["1학년 2반"]) classData["1학년 2반"] = { current: 0, target: 5000, reward: "상상체험실 가기", indivReward: "자유 휴식권", lastLoginDate: '' };
+            if (!studentData["1학년 1반"]) studentData["1학년 1반"] = [];
+            if (!studentData["1학년 2반"]) studentData["1학년 2반"] = [];
+
             document.getElementById('server-status').innerText = "🟢 실시간 구글 시트 연결됨";
         } else {
             document.getElementById('server-status').innerText = "✅ 로컬 모드 (배포 시 URL 입력 필수)";
