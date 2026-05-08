@@ -65,6 +65,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 매일 자정 리셋 체크
     checkDailyReset();
+        const classSelect = document.getElementById('student-class');
+        const nameSelect = document.getElementById('student-name');
+        const loginBtn = document.getElementById('student-login-btn');
     updateAllUI();
 
     // ====================================================
@@ -185,11 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.saveData(); showAlert("초기화 완료!");
         }
     });
-
-    const classSelect = document.getElementById('student-class');
-    const nameSelect = document.getElementById('student-name');
-    const loginBtn = document.getElementById('student-login-btn');
-
+    
     function updateStudentSelects() {
         classSelect.value = ""; nameSelect.innerHTML = '<option value="">먼저 반을 선택하세요</option>';
         nameSelect.disabled = true; loginBtn.disabled = true;
