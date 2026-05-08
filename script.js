@@ -103,7 +103,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (classData[cls] && classData[cls].lastLoginDate !== todayStr) {
             console.log("새로운 날! 일일 데이터 초기화");
             Object.keys(studentData).forEach(c => {
-                studentData[c].forEach(student => {
+            if (Array.isArray(studentData[c])) {
+                    studentData[c].forEach(student => {
                     student.totalScore = 0;          
                     student.earnedTicket = false;    
                     student.completedMenus = [];     
