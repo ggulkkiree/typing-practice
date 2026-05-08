@@ -131,11 +131,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ====================================================
     // 3. UI 및 모달 로직
     // ====================================================
-    function showScreen(screenId) { 
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
-        document.getElementById(screenId).classList.add('active'); 
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    
+    const targetScreen = document.getElementById(id);
+    if (targetScreen) {
+        targetScreen.classList.add('active'); // 정상적으로 화면이 있으면 띄움
+    } else {
+        console.error("🚨 앗! index.html에 이 화면이 없어요:", id); // 없으면 콘솔에 범인 이름 출력
     }
-
+}
     let pwActionTarget = ""; 
     function showPwModal(title, action) {
         document.getElementById('pw-modal-title').innerText = title; document.getElementById('pw-modal-input').value = "";
