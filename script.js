@@ -627,79 +627,115 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('logout-btn').addEventListener('click', () => { updateStudentSelects(); showScreen('student-login-screen'); });
 
-    // ====================================================
-    // 6. Gemini AI 연동 로직 (GAS 우회 방식으로 완벽 교체 완료!)
-    // ====================================================
-    async function callGeminiAPI(prompt, isJson = false) {
-        if (!GAS_URL) { alert("서버 주소(GAS_URL)가 없어 AI 기능을 사용할 수 없습니다."); return null; }
-        
-        let retries = 0; const delays = [1000, 2000, 4000, 8000, 16000];
-        while (retries < 5) {
-            try {
-                // 👈 핵심: 구글 서버가 아닌 내 GAS 주소로 프롬프트와 액션을 보냅니다.
-                const response = await fetch(GAS_URL, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({
-                        action: "generateAI",
-                        prompt: prompt
-                    }) 
-                });
-                
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const result = await response.json();
-                
-                // 에러 처리
-                if (result.error) throw new Error(result.error);
-                
-                return result.candidates[0].content.parts[0].text;
-            } catch (error) {
-                retries++;
-                if (retries >= 5) { alert("AI 응답 지연: " + error.message); return null; }
-                await new Promise(r => setTimeout(r, delays[retries - 1]));
+// ====================================================
+// 6. Gemini AI 연동 로직 (CORS preflight 회피 버전)
+// ====================================================
+async function callGeminiAPI(prompt, isJson = false) {
+    if (!GAS_URL) {
+        alert("서버 주소(GAS_URL)가 없어 AI 기능을 사용할 수 없습니다.");
+        return null;
+    }
+
+    let retries = 0;
+    const delays = [1000, 2000, 4000, 8000, 16000];
+
+    while (retries < 5) {
+        try {
+            // 핵심: application/json 헤더를 제거하고,
+            // URLSearchParams로 전송해 preflight 가능성을 낮춤
+            const formBody = new URLSearchParams();
+            formBody.append("action", "generateAI");
+            formBody.append("prompt", prompt);
+
+            const response = await fetch(GAS_URL, {
+                method: "POST",
+                body: formBody
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
+
+            const result = await response.json();
+
+            if (result.error) {
+                throw new Error(result.error);
+            }
+
+            // GAS 응답 포맷 방어 코드
+            const text =
+                result?.candidates?.[0]?.content?.parts?.[0]?.text ??
+                result?.text ??
+                null;
+
+            if (!text) {
+                throw new Error("응답 형식이 예상과 다릅니다.");
+            }
+
+            return text;
+        } catch (error) {
+            retries++;
+            if (retries >= 5) {
+                alert("AI 응답 지연: " + error.message);
+                return null;
+            }
+            await new Promise((r) => setTimeout(r, delays[retries - 1]));
         }
     }
 
-    document.getElementById('ai-generate-btn').addEventListener('click', async () => {
-        if (!GAS_URL) { alert("서버 통신 오류로 문장을 생성할 수 없습니다."); return; }
+    return null;
+}
 
-        const type = document.getElementById('ai-type-select').value;
-        const btn = document.getElementById('ai-generate-btn');
-        const loading = document.getElementById('ai-loading');
-        btn.disabled = true; loading.style.display = 'block';
+document.getElementById('ai-generate-btn').addEventListener('click', async () => {
+    if (!GAS_URL) {
+        alert("서버 통신 오류로 문장을 생성할 수 없습니다.");
+        return;
+    }
 
-        let prompt = "";
-        if (type === 'word') {
-            prompt = `특수교육 학생들의 타자 연습을 위한 긍정적이고, 아름답고, 희망찬 2~4글자의 한글 단어 10개를 만들어주세요. 특수문자는 제외하고 한글만 사용하세요. 배열 형태의 JSON으로 반환해주세요. (예: ["사랑", "희망", "행복", "친구", "미소"])`;
-        } else {
-            prompt = `특수교육 학생들의 타자 연습을 위한 긍정적이고, 아름답고, 위로가 되는 따뜻한 짧은 문장 5개를 만들어주세요. 특수교육 학생들이 이해하기 쉽도록 아주 직관적이고 다정한 어투로 작성해주세요. 특수문자는 제외하고 한글, 띄어쓰기, 마침표만 사용하세요. 배열 형태의 JSON으로 반환해주세요.`;
+    const type = document.getElementById('ai-type-select').value;
+    const btn = document.getElementById('ai-generate-btn');
+    const loading = document.getElementById('ai-loading');
+
+    btn.disabled = true;
+    loading.style.display = 'block';
+
+    let prompt = "";
+    if (type === 'word') {
+        prompt = `특수교육 학생들의 타자 연습을 위한 긍정적이고, 아름답고, 희망찬 2~4글자의 한글 단어 10개를 만들어주세요. 특수문자는 제외하고 한글만 사용하세요. 배열 형태의 JSON으로 반환해주세요. (예: ["사랑", "희망", "행복", "친구", "미소"])`;
+    } else {
+        prompt = `특수교육 학생들의 타자 연습을 위한 긍정적이고, 아름답고, 위로가 되는 따뜻한 짧은 문장 5개를 만들어주세요. 특수교육 학생들이 이해하기 쉽도록 아주 직관적이고 다정한 어투로 작성해주세요. 특수문자는 제외하고 한글, 띄어쓰기, 마침표만 사용하세요. 배열 형태의 JSON으로 반환해주세요.`;
+    }
+
+    const resultText = await callGeminiAPI(prompt, true);
+
+    if (resultText) {
+        try {
+            const cleanText = resultText
+                .replace(/```json/gi, '')
+                .replace(/```/g, '')
+                .trim();
+
+            const items = JSON.parse(cleanText);
+
+            const cls = document.getElementById('admin-class').value;
+            const targetKey = type === 'word' ? 'aiWords' : 'aiSentences';
+            const targetMenu = type === 'word' ? '낱말 연습' : '문장 연습';
+
+            if (!classData[cls][targetKey]) classData[cls][targetKey] = [];
+
+            items.forEach(item => {
+                if (!classData[cls][targetKey].includes(item)) classData[cls][targetKey].push(item);
+                if (!practiceContents[targetMenu].includes(item)) practiceContents[targetMenu].push(item);
+            });
+
+            window.saveData();
+            alert(`성공적으로 추가되었습니다!\n\n추가된 내용:\n- ` + items.join('\n- '));
+            closeModals();
+        } catch (e) {
+            alert("생성에 실패했습니다. 다시 시도해주세요. (사유: JSON 파싱 오류)");
         }
+    }
 
-        const resultText = await callGeminiAPI(prompt, true);
-        if (resultText) {
-            try {
-                // 🚨 보강된 코드: AI가 간혹 보내는 마크다운 특수문자(```json 등)를 안전하게 지워줍니다.
-                const cleanText = resultText.replace(/```json/gi, '').replace(/```/g, '').trim();
-                const items = JSON.parse(cleanText);
-                
-                const cls = document.getElementById('admin-class').value;
-                const targetKey = type === 'word' ? 'aiWords' : 'aiSentences';
-                const targetMenu = type === 'word' ? '낱말 연습' : '문장 연습';
-
-                if (!classData[cls][targetKey]) classData[cls][targetKey] = [];
-
-                items.forEach(item => {
-                    if (!classData[cls][targetKey].includes(item)) classData[cls][targetKey].push(item);
-                    if (!practiceContents[targetMenu].includes(item)) practiceContents[targetMenu].push(item);
-                });
-
-                window.saveData();
-                alert(`성공적으로 추가되었습니다!\n\n추가된 내용:\n- ` + items.join('\n- '));
-                closeModals();
-            } catch (e) { alert("생성에 실패했습니다. 다시 시도해주세요. (사유: JSON 파싱 오류)"); }
-        }
-        btn.disabled = false; loading.style.display = 'none';
-    });
-
-}); // DOMContentLoaded 끝
+    btn.disabled = false;
+    loading.style.display = 'none';
+});
