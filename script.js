@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ====================================================
     // 🚨 선생님 설정 구역
     // ====================================================
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyVgVk_aQMZBpkH8ufrJl-CClGWDzvv7HxA_Ai0y38gw8uqU2dt49sG8eUaMYpED3ckkA/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxV6okoAMnBKIjw7Y36eJnb09Ztk48KRZw-fHwIdsIWZeYp0qbDkMitef_QmlXIul6eNg/exec";
     // AI는 GAS(스크립트 속성 GEMINI_API_KEY)만 사용 — 브라우저에 API 키를 두지 마세요.
     // ====================================================
 
