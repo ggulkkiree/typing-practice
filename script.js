@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ====================================================
     // 🚨 선생님 설정 구역 (완벽 장착 완료!)
     // ====================================================
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxUXKdmmKigf_GS7XIITl2p1imHuIN7IsxRmmTcbJ92oUXX1eRko-83a2fAb3UATvJrgw/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyVgVk_aQMZBpkH8ufrJl-CClGWDzvv7HxA_Ai0y38gw8uqU2dt49sG8eUaMYpED3ckkA/exec";
     // 🛡️ API 키는 보안을 위해 여기서 완전히 삭제되었습니다! (GAS 서버 금고에 보관됨)
     // ====================================================
 
