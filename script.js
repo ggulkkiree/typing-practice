@@ -3,8 +3,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ====================================================
     // 🚨 선생님 설정 구역 (완벽 장착 완료!)
     // ====================================================
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwfg3ySJN-i8dcmtLvvpzP7UvO0p4WUU676eZNDhrexonHhEPFBGghlpiRDgI1sNKW0pA/exec";
-    const apiKey = "AIzaSyAaCCMo_6N3Lhct_3IATBWqnqvfE3xrIpE";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxUXKdmmKigf_GS7XIITl2p1imHuIN7IsxRmmTcbJ92oUXX1eRko-83a2fAb3UATvJrgw/exec";
+    // 🛡️ API 키는 보안을 위해 여기서 완전히 삭제되었습니다! (GAS 서버 금고에 보관됨)
     // ====================================================
 
     let adminPassword = localStorage.getItem('adminPw') || '0000';
@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ====================================================
-    // 2. 구글 서버(GAS) 데이터 저장 로직 (checkDailyReset보다 먼저 정의)
+    // 2. 구글 서버(GAS) 데이터 저장 로직 (액션 추가 완료!)
     // ====================================================
     window.saveData = function () {
         localStorage.setItem('adminPw', adminPassword);
@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             fetch(GAS_URL, {
                 method: 'POST',
                 body: JSON.stringify({
+                    action: "saveData", // 👈 핵심: GAS에게 "저장해줘!"라고 알림
                     data: {
                         studentData: studentData,
                         classData: classData,
@@ -294,8 +295,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.querySelectorAll('.ai-analyze-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                if (!apiKey) {
-                    alert("API 키가 설정되지 않아 AI 기능을 사용할 수 없습니다. 일반 기능은 정상 작동합니다!");
+                if (!GAS_URL) {
+                    alert("서버 통신이 설정되지 않아 AI 기능을 사용할 수 없습니다.");
                     return;
                 }
                 const name = e.target.dataset.name; const wpm = e.target.dataset.wpm; const weak = e.target.dataset.weak; const idx = e.target.dataset.idx;
@@ -627,20 +628,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('logout-btn').addEventListener('click', () => { updateStudentSelects(); showScreen('student-login-screen'); });
 
     // ====================================================
-    // 6. Gemini AI 연동 로직
+    // 6. Gemini AI 연동 로직 (GAS 우회 방식으로 완벽 교체 완료!)
     // ====================================================
     async function callGeminiAPI(prompt, isJson = false) {
-        if (!apiKey) { alert("API 키가 설정되지 않아 AI 기능을 사용할 수 없습니다."); return null; }
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-        const payload = { contents: [{ parts: [{ text: prompt }] }] };
-        if (isJson) { payload.generationConfig = { responseMimeType: "application/json", responseSchema: { type: "ARRAY", items: { type: "STRING" } } }; }
-
+        if (!GAS_URL) { alert("서버 주소(GAS_URL)가 없어 AI 기능을 사용할 수 없습니다."); return null; }
+        
         let retries = 0; const delays = [1000, 2000, 4000, 8000, 16000];
         while (retries < 5) {
             try {
-                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                // 👈 핵심: 구글 서버가 아닌 내 GAS 주소로 프롬프트와 액션을 보냅니다.
+                const response = await fetch(GAS_URL, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({
+                        action: "generateAI",
+                        prompt: prompt
+                    }) 
+                });
+                
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const result = await response.json();
+                
+                // 에러 처리
+                if (result.error) throw new Error(result.error);
+                
                 return result.candidates[0].content.parts[0].text;
             } catch (error) {
                 retries++;
@@ -651,7 +662,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.getElementById('ai-generate-btn').addEventListener('click', async () => {
-        if (!apiKey) { alert("API 키가 없어 생성할 수 없습니다."); return; }
+        if (!GAS_URL) { alert("서버 통신 오류로 문장을 생성할 수 없습니다."); return; }
 
         const type = document.getElementById('ai-type-select').value;
         const btn = document.getElementById('ai-generate-btn');
@@ -668,7 +679,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const resultText = await callGeminiAPI(prompt, true);
         if (resultText) {
             try {
-                const items = JSON.parse(resultText);
+                // 🚨 보강된 코드: AI가 간혹 보내는 마크다운 특수문자(```json 등)를 안전하게 지워줍니다.
+                const cleanText = resultText.replace(/```json/gi, '').replace(/```/g, '').trim();
+                const items = JSON.parse(cleanText);
+                
                 const cls = document.getElementById('admin-class').value;
                 const targetKey = type === 'word' ? 'aiWords' : 'aiSentences';
                 const targetMenu = type === 'word' ? '낱말 연습' : '문장 연습';
@@ -683,7 +697,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.saveData();
                 alert(`성공적으로 추가되었습니다!\n\n추가된 내용:\n- ` + items.join('\n- '));
                 closeModals();
-            } catch (e) { alert("생성에 실패했습니다. 다시 시도해주세요."); }
+            } catch (e) { alert("생성에 실패했습니다. 다시 시도해주세요. (사유: JSON 파싱 오류)"); }
         }
         btn.disabled = false; loading.style.display = 'none';
     });
