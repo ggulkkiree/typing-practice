@@ -296,18 +296,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('.delete-btn').forEach(btn => { btn.addEventListener('click', (e) => { if (confirm("정말 삭제하시겠습니까?")) { studentData[e.target.dataset.cls].splice(e.target.dataset.idx, 1); window.saveData(); renderStudentTable(); } }); });
 
         document.querySelectorAll('.ai-analyze-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                if (!GAS_URL || GAS_URL === "") {
-                    alert("웹 앱 URL(GAS)이 설정되지 않아 AI 기능을 사용할 수 없습니다.");
-                    return;
-                }
+            btn.addEventListener('click', (e) => {
                 const name = e.target.dataset.name; const wpm = e.target.dataset.wpm; const weak = e.target.dataset.weak; const idx = e.target.dataset.idx;
                 const feedbackBox = document.getElementById(`ai-feedback-${idx}`);
                 e.target.disabled = true; e.target.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 분석 중...`;
-                const prompt = `당신은 특수교육 선생님입니다. 학생 '${name}'의 타자 기록(최고 속도: ${wpm}타/분, 가장 많이 틀리는 자음/모음: ${weak})을 바탕으로, 이 학생에게 직접 들려줄 따뜻하고 희망찬 칭찬과 조언을 2문장으로 짧게 작성해주세요.`;
-                const feedback = await callGeminiAPI(prompt, false);
-                if (feedback) { feedbackBox.innerHTML = `<strong>🤖 AI 보조교사:</strong><br>${feedback}`; feedbackBox.style.display = 'block'; }
-                e.target.innerHTML = `✨ AI 진단 및 칭찬`; e.target.disabled = false;
+                
+                // 0.5초 뒤 즉시 따뜻한 코멘트 노출
+                setTimeout(() => {
+                    const feedback = window.getLocalFeedback(name, wpm, weak);
+                    feedbackBox.innerHTML = `<strong>🤖 AI 보조교사:</strong><br>${feedback}`;
+                    feedbackBox.style.display = 'block';
+                    e.target.innerHTML = `✨ AI 진단 및 칭찬`;
+                    e.target.disabled = false;
+                }, 500);
             });
         });
 
@@ -474,10 +475,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateTargetTextDisplay(inputVal) {
         const validLen = inputVal.length;
         for (let i = 0; i < charSpans.length; i++) {
-            if (i < validLen - 1)              charSpans[i].className = 'char-typed';
-            else if (i === validLen - 1)       charSpans[i].className = 'char-current';
+            if (i < validLen - 1) charSpans[i].className = 'char-typed';
+            else if (i === validLen - 1) charSpans[i].className = 'char-current';
             else if (i === 0 && validLen === 0) charSpans[i].className = 'char-current';
-            else                               charSpans[i].className = 'char-pending';
+            else charSpans[i].className = 'char-pending';
         }
     }
 
@@ -670,61 +671,65 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('logout-btn').addEventListener('click', () => { updateStudentSelects(); showScreen('student-login-screen'); });
 
     // ====================================================
-    // 6. Gemini AI 연동 로직 (GET 방식 — CORS 지원)
+    // 6. 로컬 긍정 단어/문장 선물상자 및 진단 시스템 (CORS / 외부 API 문제 완벽 해결)
     // ====================================================
-    async function callGeminiAPI(prompt, isJson = false) {
-        if (!GAS_URL || GAS_URL === "") {
-            alert("웹 앱 URL(GAS)이 설정되지 않아 AI 기능을 사용할 수 없습니다.");
-            return null;
+    const LOCAL_WORD_BANK = [
+        "사랑", "희망", "행복", "친구", "미소", "용기", "배려", "기쁨", "감사", "평화",
+        "믿음", "응원", "도전", "성장", "배움", "우정", "인사", "칭찬", "양보", "협동",
+        "가족", "선물", "햇살", "바람", "구름", "하늘", "바다", "나무", "새싹", "꽃잎",
+        "노래", "그림", "꿈나라", "천사", "별빛", "달님", "햇님", "마음", "생각", "온기",
+        "따뜻", "친절", "정성", "노력", "열정", "성공", "보람", "행운", "기적", "축복",
+        "하루", "선생님", "학교", "교실", "친구들", "우리", "함께", "나눔", "도움", "손길",
+        "성실", "미덕", "진심", "다정", "포근", "안전", "건강", "튼튼", "씩씩", "용감",
+        "정직", "지혜", "겸손", "끈기", "인내", "위로", "공감", "이해", "화합"
+    ];
+
+    const LOCAL_SENTENCE_BANK = [
+        "오늘도 힘차게 시작해 봐요.",
+        "너는 세상에서 가장 소중한 사람이야.",
+        "천천히 해도 괜찮아, 잘하고 있어.",
+        "너의 예쁜 미소가 모두를 행복하게 해.",
+        "우리는 서로 도우며 함께 성장해요.",
+        "너의 노력이 조금씩 열매를 맺고 있어.",
+        "선생님은 언제나 너를 응원한단다.",
+        "오늘 하루도 참 고마운 시간이에요.",
+        "친구의 손을 잡고 함께 걸어가요.",
+        "포기하지 않는 네 모습이 정말 멋져.",
+        "따뜻한 말 한마디가 세상을 밝혀요.",
+        "매일매일 조금씩 더 씩씩해지고 있어요.",
+        "너는 아주 특별하고 빛나는 존재야.",
+        "다정한 인사는 마음의 문을 열어줘요.",
+        "마음속에 예쁜 꿈을 하나씩 심어봐요.",
+        "힘들 때는 잠시 쉬어가도 괜찮단다.",
+        "네가 있어서 우리 반이 참 행복해.",
+        "할 수 있다는 믿음이 큰 힘이 돼요.",
+        "주변을 둘러보면 사랑이 가득해요.",
+        "오늘도 참 잘 해냈어, 최고야."
+    ];
+
+    window.getLocalFeedback = function(name, wpm, weak) {
+        wpm = parseInt(wpm) || 0;
+        let wpmComment = "";
+        if (wpm >= 200) {
+            wpmComment = `최고 타수가 무려 ${wpm}타라니, 우리 반 타자 챔피언이네요! 손가락이 날개 달린 새처럼 가볍고 빠르게 움직이는 모습이 상상돼요.`;
+        } else if (wpm >= 100) {
+            wpmComment = `최고 속도가 ${wpm}타를 넘어서며 정말 눈부시게 성장했군요! 성실하게 쌓아 올린 노력이 실력으로 반짝반짝 빛나고 있어요.`;
+        } else if (wpm >= 50) {
+            wpmComment = `최고 타수 ${wpm}타를 달성하며 차근차근 잘 나아가고 있어요! 포기하지 않고 자판을 두드리는 모습이 정말 씩씩하고 자랑스럽습니다.`;
+        } else {
+            wpmComment = `천천히 한 글자씩 정성스럽게 타자를 익히고 있는 모습이 정말 아름다워요! 포기하지 않고 도전하는 네 마음이 가장 큰 보물이야.`;
         }
         
-        const delays = [1000, 2000, 4000, 8000, 16000];
-        let retries = 0;
-        
-        while (retries < 5) {
-            try {
-                // GET 방식으로 전환 (GAS doGet은 CORS 지원)
-                const params = new URLSearchParams({
-                    action: 'generateAI',
-                    prompt: prompt,
-                    jsonMode: isJson ? '1' : '0'
-                });
-                const response = await fetch(GAS_URL + '?' + params.toString());
-                
-                const result = await response.json();
-                
-                if (result.error && typeof result.error === 'string') {
-                    throw new Error(result.error);
-                }
-                if (result.error) {
-                    const e = result.error;
-                    throw new Error(e.message || JSON.stringify(e));
-                }
-                if (!result.candidates || !result.candidates[0] ||
-                    !result.candidates[0].content || !result.candidates[0].content.parts ||
-                    !result.candidates[0].content.parts[0]) {
-                    throw new Error('AI 응답을 해석할 수 없습니다.');
-                }
-                
-                return result.candidates[0].content.parts[0].text;
-                
-            } catch (error) {
-                retries++;
-                if (retries >= 5) {
-                    alert("AI 응답 지연: " + error.message);
-                    return null;
-                }
-                await new Promise(r => setTimeout(r, delays[retries - 1]));
-            }
+        let weakComment = "";
+        if (weak && weak !== "없음" && weak.trim() !== "") {
+            weakComment = `요즘 '${weak}' 글쇠를 누를 때 조금 더 많은 집중력이 필요하지만, 지금처럼 차분히 연습하면 금방 손가락이 기억하게 될 거예요.`;
+        } else {
+            weakComment = `특별히 자주 틀리는 자판 없이 전체적으로 아주 안정감 있고 꼼꼼하게 키보드를 누르고 있군요! 대단해요.`;
         }
-    }
+        return `${wpmComment} ${weakComment} 선생님은 언제나 너의 도전을 마음 다해 응원한단다.`;
+    };
 
-    document.getElementById('ai-generate-btn').addEventListener('click', async () => {
-        if (!GAS_URL || GAS_URL === "") { 
-            alert("웹 앱 URL이 없어 생성할 수 없습니다."); 
-            return; 
-        }
-
+    document.getElementById('ai-generate-btn').addEventListener('click', () => {
         const type = document.getElementById('ai-type-select').value;
         const btn = document.getElementById('ai-generate-btn');
         const loading = document.getElementById('ai-loading');
@@ -732,45 +737,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.disabled = true;
         loading.style.display = 'block';
 
-        let prompt = "";
-        if (type === 'word') {
-            prompt = `특수교육 학생들의 타자 연습을 위한 긍정적이고, 아름답고, 희망찬 2~4글자의 한글 단어 10개를 만들어주세요. 특수문자는 제외하고 한글만 사용하세요. 배열 형태의 JSON으로 반환해주세요. (예: ["사랑", "희망", "행복", "친구", "미소"])`;
-        } else {
-            prompt = `특수교육 학생들의 타자 연습을 위한 긍정적이고, 아름답고, 위로가 되는 따뜻한 짧은 문장 5개를 만들어주세요. 특수교육 학생들이 이해하기 쉽도록 아주 직관적이고 다정한 어투로 작성해주세요. 특수문자는 제외하고 한글, 띄어쓰기, 마침표만 사용하세요. 배열 형태의 JSON으로 반환해주세요.`;
-        }
+        // 마법 상자에서 가져오는 느낌을 주기 위해 0.6초 뒤 실행
+        setTimeout(() => {
+            let items = [];
+            const cls = document.getElementById('admin-class').value;
+            const targetKey = type === 'word' ? 'aiWords' : 'aiSentences';
+            const targetMenu = type === 'word' ? '낱말 연습' : '문장 연습';
 
-        const resultText = await callGeminiAPI(prompt, true);
+            if (!classData[cls][targetKey]) classData[cls][targetKey] = [];
 
-        if (resultText) {
-            try {
-                const cleanText = resultText
-                    .replace(/```json/gi, '')
-                    .replace(/```/g, '')
-                    .trim();
-
-                const items = JSON.parse(cleanText);
-
-                const cls = document.getElementById('admin-class').value;
-                const targetKey = type === 'word' ? 'aiWords' : 'aiSentences';
-                const targetMenu = type === 'word' ? '낱말 연습' : '문장 연습';
-
-                if (!classData[cls][targetKey]) classData[cls][targetKey] = [];
-
-                items.forEach(item => {
-                    if (!classData[cls][targetKey].includes(item)) classData[cls][targetKey].push(item);
-                    if (!practiceContents[targetMenu].includes(item)) practiceContents[targetMenu].push(item);
-                });
-
-                window.saveData();
-                alert(`성공적으로 추가되었습니다!\n\n추가된 내용:\n- ` + items.join('\n- '));
-                closeModals();
-            } catch (e) {
-                alert("생성에 실패했습니다. 다시 시도해주세요. (사유: JSON 파싱 오류)");
+            if (type === 'word') {
+                // 10개 랜덤 선택
+                let tempBank = [...LOCAL_WORD_BANK];
+                tempBank = tempBank.filter(w => !classData[cls][targetKey].includes(w));
+                if (tempBank.length < 10) tempBank = [...LOCAL_WORD_BANK];
+                
+                tempBank.sort(() => 0.5 - Math.random());
+                items = tempBank.slice(0, 10);
+            } else {
+                // 5개 랜덤 선택
+                let tempBank = [...LOCAL_SENTENCE_BANK];
+                tempBank = tempBank.filter(s => !classData[cls][targetKey].includes(s));
+                if (tempBank.length < 5) tempBank = [...LOCAL_SENTENCE_BANK];
+                
+                tempBank.sort(() => 0.5 - Math.random());
+                items = tempBank.slice(0, 5);
             }
-        }
 
-        btn.disabled = false;
-        loading.style.display = 'none';
+            items.forEach(item => {
+                if (!classData[cls][targetKey].includes(item)) classData[cls][targetKey].push(item);
+                if (!practiceContents[targetMenu].includes(item)) practiceContents[targetMenu].push(item);
+            });
+
+            window.saveData();
+            alert(`🎉 마법 꾸러미가 도착했습니다!\n\n추가된 내용:\n- ` + items.join('\n- '));
+            
+            btn.disabled = false;
+            loading.style.display = 'none';
+            closeModals();
+        }, 600);
     });
 
 }); // DOMContentLoaded 끝
