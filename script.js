@@ -1,18 +1,23 @@
 document.addEventListener('DOMContentLoaded', async () => {
 
     // ====================================================
-    // 🚨 선생님 설정 구역
+    // 🚨 선생님 설정 구역 — 여기만 수정하세요!
     // ====================================================
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxV6okoAMnBKIjw7Y36eJnb09Ztk48KRZw-fHwIdsIWZeYp0qbDkMitef_QmlXIul6eNg/exec";
-    // AI는 GAS(스크립트 속성 GEMINI_API_KEY)만 사용 — 브라우저에 API 키를 두지 마세요.
+
+    // 📌 반 목록: 반을 추가/삭제하려면 이 배열만 수정하세요!
+    const DEFAULT_CLASSES = ["1학년 1반", "1학년 2반"];
     // ====================================================
 
     let adminPassword = localStorage.getItem('adminPw') || '0000';
-    let classData = {
-        "1학년 1반": { current: 0, target: 5000, reward: "상상체험실 가기", indivReward: "자유 휴식권", lastLoginDate: '' },
-        "1학년 2반": { current: 0, target: 5000, reward: "상상체험실 가기", indivReward: "자유 휴식권", lastLoginDate: '' }
-    };
-    let studentData = { "1학년 1반": [], "1학년 2반": [] };
+
+    // DEFAULT_CLASSES 기반으로 초기 데이터 구조 생성
+    let classData = {};
+    let studentData = {};
+    DEFAULT_CLASSES.forEach(cls => {
+        classData[cls] = { current: 0, target: 5000, reward: "상상체험실 가기", indivReward: "자유 휴식권", lastLoginDate: '' };
+        studentData[cls] = [];
+    });
 
     let currentUser = null;
     let currentUserClass = null;
@@ -35,10 +40,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (data.adminPassword) adminPassword = data.adminPassword;
             }
 
-            if (!classData["1학년 1반"]) classData["1학년 1반"] = { current: 0, target: 5000, reward: "상상체험실 가기", indivReward: "자유 휴식권", lastLoginDate: '' };
-            if (!classData["1학년 2반"]) classData["1학년 2반"] = { current: 0, target: 5000, reward: "상상체험실 가기", indivReward: "자유 휴식권", lastLoginDate: '' };
-            if (!studentData["1학년 1반"]) studentData["1학년 1반"] = [];
-            if (!studentData["1학년 2반"]) studentData["1학년 2반"] = [];
+            // DEFAULT_CLASSES 기준으로 누락된 반 보정 (루프로 처리)
+            DEFAULT_CLASSES.forEach(cls => {
+                if (!classData[cls]) classData[cls] = { current: 0, target: 5000, reward: "상상체험실 가기", indivReward: "자유 휴식권", lastLoginDate: '' };
+                if (!studentData[cls]) studentData[cls] = [];
+            });
 
             document.getElementById('server-status').innerText = "🟢 실시간 구글 시트 연결됨";
         } else {
@@ -52,7 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (parsed.studentData) studentData = parsed.studentData;
                 if (parsed.classData) classData = parsed.classData;
             } else {
-                studentData["1학년 1반"].push({ name: "김에이스", errorMode: "stop", allowedMenus: ["자리 연습", "낱말 연습", "문장 연습"], stats: { maxWpm: 0 }, weakness: {}, totalScore: 0, earnedTicket: false, completedMenus: [], mission: { type: 'score', val: 5000 } });
+                studentData[DEFAULT_CLASSES[0]].push({ name: "김에이스", errorMode: "stop", allowedMenus: ["자리 연습", "낱말 연습", "문장 연습"], stats: { maxWpm: 0 }, weakness: {}, totalScore: 0, earnedTicket: false, completedMenus: [], mission: { type: 'score', val: 5000 } });
             }
         }
     } catch (error) {
