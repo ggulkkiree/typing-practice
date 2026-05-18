@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:,">
 </head>
 <body>
     <span id="server-status">☁️ 구글 서버 확인 중...</span>
@@ -62,8 +63,6 @@
             <label>반 선택</label>
             <select id="student-class">
                 <option value="">반을 선택하세요</option>
-                <option value="1학년 1반">1학년 1반</option>
-                <option value="1학년 2반">1학년 2반</option>
             </select>
         </div>
         <div class="form-group">
@@ -184,6 +183,7 @@
         <div class="result-content">
             <p style="font-size: 24px; color:#3D2B1F; font-weight:900;">수고하셨습니다. 오늘의 기록은</p>
             <div class="result-wpm" id="result-main-stat"><span id="final-wpm">0</span> 타/분</div>
+            <div id="new-record-banner" style="display:none; background:linear-gradient(135deg,#FFD700,#FF6B35); color:#fff; font-size:22px; font-weight:900; padding:14px 30px; border-radius:20px; margin:12px auto; box-shadow:0 4px 16px rgba(255,107,53,0.4); animation:pulse 0.8s ease-in-out 2;"></div>
             <div class="result-acc">정확도: <span id="final-acc">100</span>%</div>
             <p style="color:#5BC044; font-weight:900; font-size:20px;">+ 오늘 획득한 점수: <span id="final-earned-score" style="color:#FF6B35; font-size:26px;">0</span>점</p>
         </div>
@@ -199,8 +199,6 @@
         
         <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px;">
             <select id="admin-class" style="width:220px; flex:none; font-weight:900;">
-                <option value="1학년 1반">1학년 1반</option>
-                <option value="1학년 2반">1학년 2반</option>
             </select>
             <input type="text" id="admin-new-student" placeholder="새 학생 이름 추가">
             <button id="add-student-btn" style="width:auto; margin:0; padding:18px 30px;">학생 추가</button>
@@ -213,9 +211,10 @@
         <table id="student-table">
             <thead>
                 <tr>
-                    <th width="10%">이름</th>
+                    <th width="12%">이름</th>
                     <th width="10%">최고 타수</th>
-                    <th width="32%">연습 허용 메뉴</th>
+                    <th width="15%">오늘 점수</th>
+                    <th width="30%">연습 허용 메뉴</th>
                     <th width="8%">관리</th>
                 </tr>
             </thead>
