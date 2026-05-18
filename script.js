@@ -90,9 +90,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function checkDailyReset() {
         const todayStr = new Date().toISOString().slice(0, 10);
-        const cls = "1학년 1반";
 
-        if (classData[cls] && classData[cls].lastLoginDate !== todayStr) {
+        // [버그1 수정] "1학년 1반" 하드코딩 제거 → 모든 반 중 하나라도 날짜가 다르면 전체 초기화
+        const needsReset = Object.keys(classData).some(c =>
+            classData[c] && classData[c].lastLoginDate !== todayStr
+        );
+
+        if (needsReset) {
             console.log("새로운 날! 일일 데이터 초기화");
 
             Object.keys(studentData).forEach(c => {
@@ -107,6 +111,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             Object.keys(classData).forEach(c => {
                 classData[c].lastLoginDate = todayStr;
+                // [버그2 수정] 반 공동 달성 점수도 날마다 0으로 리셋
+                classData[c].current = 0;
             });
 
             window.saveData();
@@ -115,16 +121,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     checkDailyReset();
 
+    // [\uac1c\uc120] \ubc18 \ub4dc\ub86d\ub2e4\uc6b4\uc744 classData \ud0a4 \uae30\ubc18\uc73c\ub85c \ub3d9\uc801 \uc0dd\uc131
+    function populateClassSelects() {
+        const classes = Object.keys(classData);
+        const studentClassEl = document.getElementById('student-class');
+        const adminClassEl = document.getElementById('admin-class');
+
+        // \ud559\uc0dd \ub85c\uadf8\uc778 \ub4dc\ub86d\ub2e4\uc6b4
+        studentClassEl.innerHTML = '<option value="">\ubc18\uc744 \uc120\ud0dd\ud558\uc138\uc694</option>';
+        classes.forEach(cls => {
+            const opt = document.createElement('option');
+            opt.value = cls; opt.textContent = cls;
+            studentClassEl.appendChild(opt);
+        });
+
+        // \uad00\ub9ac\uc790 \ub4dc\ub86d\ub2e4\uc6b4
+        const prevAdminVal = adminClassEl.value;
+        adminClassEl.innerHTML = '';
+        classes.forEach(cls => {
+            const opt = document.createElement('option');
+            opt.value = cls; opt.textContent = cls;
+            adminClassEl.appendChild(opt);
+        });
+        // \uc774\uc804 \uc120\ud0dd\uac12 \ubcf5\uc6d0
+        if (prevAdminVal && classes.includes(prevAdminVal)) adminClassEl.value = prevAdminVal;
+    }
+
     function updateAllUI() {
         if (document.getElementById('loading-screen').classList.contains('active')) {
             showScreen('student-login-screen');
             document.getElementById('admin-btn').style.display = 'block';
         }
+        populateClassSelects(); // [\uac1c\uc120] \ubc18 \ub4dc\ub86d\ub2e4\uc6b4 \ub3d9\uc801 \uc0dd\uc131
         updateStudentSelects();
         if (document.getElementById('admin-screen').classList.contains('active')) renderStudentTable();
         if (document.getElementById('student-menu-screen').classList.contains('active')) renderMainMenu();
         if (document.getElementById('practice-screen').classList.contains('active')) updateClassGoalUI();
     }
+
 
     // ====================================================
     // 3. UI 및 모달 로직
@@ -274,12 +308,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 weakStr = sortedWeakness.slice(0, 3).map(x => x[0]).join(', ');
             }
 
+            // [개선] 오늘 점수 / 목표 점수 표시
+            const todayScore = student.totalScore || 0;
+            const missionVal = (student.mission && student.mission.val) || 5000;
+            const scorePercent = Math.min(100, Math.floor((todayScore / missionVal) * 100));
+            const scoreBadgeColor = student.earnedTicket ? '#5BC044' : (scorePercent >= 50 ? '#FF6B35' : '#888');
+
             tr.innerHTML = `
                 <td style="font-weight:900; font-size:16px;">${student.name}<br>
                     <button class="ai-btn ai-analyze-btn" data-name="${student.name}" data-wpm="${student.stats.maxWpm}" data-weak="${weakStr}" data-idx="${index}" style="margin-top:10px; padding:8px 12px; font-size:12px; border-radius:8px; width:100%;">✨ AI 진단 및 칭찬</button>
                     <div id="ai-feedback-${index}" class="ai-feedback-box"></div>
                 </td>
                 <td>${window.getRankBadgeHTML(student.stats.maxWpm)}<div style="margin-top:5px; font-weight:700; color:#5BC044;">${student.stats.maxWpm}타</div></td>
+                <td style="text-align:center; font-weight:900; font-size:15px;">
+                    <div style="color:${scoreBadgeColor}; font-size:20px; margin-bottom:4px;">${todayScore.toLocaleString()}점</div>
+                    <div style="background:#F0F0F0; border-radius:8px; height:10px; overflow:hidden; margin-bottom:4px;">
+                        <div style="background:${scoreBadgeColor}; height:100%; width:${scorePercent}%; border-radius:8px; transition:width 0.4s;"></div>
+                    </div>
+                    <div style="font-size:12px; color:#888;">목표 ${missionVal.toLocaleString()}점의 ${scorePercent}%${student.earnedTicket ? ' ✅' : ''}</div>
+                </td>
                 <td style="text-align:left;">
                     <select class="err-mode-sel" data-cls="${selectedClass}" data-idx="${index}" style="padding: 5px; font-size:13px; margin-bottom:5px; width:100%; border:2px solid #FFE485; border-radius:8px;">
                         <option value="stop" ${student.errorMode === 'stop' ? 'selected' : ''}>🛡️ 오타 시 잠김 모드</option>
@@ -634,7 +681,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         isPracticing = false; typingInput.value = ''; lastValidValue = '';
         let currentWpm = currentCalculatedWpm;
 
-        if (isCompleted && currentCategory !== "자리 연습" && currentWpm > currentUser.stats.maxWpm) {
+        // [신기록 배너] 이전 최고 타수 기억 후 비교
+        const previousMaxWpm = currentUser.stats.maxWpm;
+        const isNewRecord = isCompleted && currentCategory !== "자리 연습" && currentWpm > previousMaxWpm && currentWpm > 0;
+
+        if (isNewRecord) {
             currentUser.stats.maxWpm = currentWpm;
         }
 
@@ -657,6 +708,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('result-main-stat').innerHTML = `<span id="final-wpm">${currentWpm}</span> 타/분`;
             document.getElementById('final-acc').innerText = accDisplay.innerText;
             document.getElementById('final-earned-score').innerText = currentSessionScore;
+
+            // [신기록 배너] 보여주기
+            const newRecordBanner = document.getElementById('new-record-banner');
+            if (newRecordBanner) {
+                if (isNewRecord) {
+                    newRecordBanner.innerHTML = `🏆 신기록 달성! ${previousMaxWpm > 0 ? previousMaxWpm + '타 → ' : ''}${currentWpm}타`;
+                    newRecordBanner.style.display = 'block';
+                } else {
+                    newRecordBanner.style.display = 'none';
+                }
+            }
+
             showScreen('result-screen');
         } else {
             window.goToMenu();
