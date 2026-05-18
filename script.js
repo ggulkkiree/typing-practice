@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (GAS_URL && GAS_URL !== "") {
             fetch(GAS_URL, {
                 method: 'POST',
-                redirect: 'follow',
+                mode: 'no-cors',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({
                     action: 'saveData',
@@ -670,7 +670,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('logout-btn').addEventListener('click', () => { updateStudentSelects(); showScreen('student-login-screen'); });
 
     // ====================================================
-    // 6. Gemini AI 연동 로직 (JSON 표준 방식 전환)
+    // 6. Gemini AI 연동 로직 (GET 방식 — CORS 지원)
     // ====================================================
     async function callGeminiAPI(prompt, isJson = false) {
         if (!GAS_URL || GAS_URL === "") {
@@ -683,16 +683,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         while (retries < 5) {
             try {
-                const response = await fetch(GAS_URL, {
-                    method: 'POST',
-                    redirect: 'follow',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({
-                        action: 'generateAI',
-                        prompt: prompt,
-                        jsonMode: !!isJson
-                    })
+                // GET 방식으로 전환 (GAS doGet은 CORS 지원)
+                const params = new URLSearchParams({
+                    action: 'generateAI',
+                    prompt: prompt,
+                    jsonMode: isJson ? '1' : '0'
                 });
+                const response = await fetch(GAS_URL + '?' + params.toString());
                 
                 const result = await response.json();
                 
