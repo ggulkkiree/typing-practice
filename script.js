@@ -74,7 +74,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (GAS_URL && GAS_URL !== "") {
             fetch(GAS_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                redirect: 'follow',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({
                     action: 'saveData',
                     data: {
@@ -430,6 +431,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let totalAccumulatedStrokes = 0; let totalErrorCount = 0; let currentCombo = 0;
     let requireEnter = false; let lastValidValue = ""; let isErrorState = false; let lastErrorValue = "";
     let isTransitioning = false; let sessionPhysicalStrokes = 0; let lastInputJasoLength = 0; let lastInputValRaw = "";
+    let isComposing = false; // [1단계] IME 조합 중 플래그
 
     let isBlindMode = true; let currentCalculatedWpm = 0;
 
@@ -451,15 +453,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('practice-screen').addEventListener('click', (e) => { if (e.target.id !== 'end-practice-btn') typingInput.focus(); });
 
-    function updateTargetTextDisplay(inputVal) {
-        let validLen = inputVal.length; let html = "";
-        for (let i = 0; i < currentWord.length; i++) {
-            if (i < validLen - 1) html += `<span class="char-typed">${currentWord[i]}</span>`;
-            else if (i === validLen - 1) html += `<span class="char-current">${currentWord[i]}</span>`;
-            else if (i === 0 && validLen === 0) html += `<span class="char-current">${currentWord[i]}</span>`;
-            else html += `<span class="char-pending">${currentWord[i]}</span>`;
+    // ─────────────────────────────────────────────────────────
+    // [1단계-A] 단어 바뀔 때 span을 1회 생성하고 노드를 캐시
+    // ─────────────────────────────────────────────────────────
+    let charSpans = [];
+
+    function buildTargetSpans(word) {
+        targetText.innerHTML = '';
+        charSpans = [];
+        for (let i = 0; i < word.length; i++) {
+            const span = document.createElement('span');
+            span.textContent = word[i];
+            span.className = (i === 0) ? 'char-current' : 'char-pending';
+            targetText.appendChild(span);
+            charSpans.push(span);
         }
-        targetText.innerHTML = html;
+    }
+
+    // [1단계-B] innerHTML 재생성 없이 classList만 교체
+    function updateTargetTextDisplay(inputVal) {
+        const validLen = inputVal.length;
+        for (let i = 0; i < charSpans.length; i++) {
+            if (i < validLen - 1)              charSpans[i].className = 'char-typed';
+            else if (i === validLen - 1)       charSpans[i].className = 'char-current';
+            else if (i === 0 && validLen === 0) charSpans[i].className = 'char-current';
+            else                               charSpans[i].className = 'char-pending';
+        }
     }
 
     window.startPractice = function (menuName, category) {
@@ -507,7 +526,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         clearIME(); lastValidValue = ""; lastErrorValue = ""; isErrorState = false;
         lastInputJasoLength = 0; lastInputValRaw = "";
-        updateTargetTextDisplay(""); typingInput.classList.remove('text-error', 'shake');
+        buildTargetSpans(currentWord); // [1단계] 단어마다 span 초기 생성
+        typingInput.classList.remove('text-error', 'shake');
         feedbackMsg.style.color = '#8A8A8A'; feedbackMsg.innerText = "타자를 시작하세요.";
         setTimeout(() => { isTransitioning = false; }, 30);
     }
@@ -532,16 +552,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (requireEnter && e.key === 'Enter' && this.value === currentWord && !isErrorState) { e.preventDefault(); processWordCompletion(); }
     });
 
-    typingInput.addEventListener('input', function (e) {
-        if (!isPracticing || isTransitioning) { if (isTransitioning) this.value = lastValidValue; return; }
-        let inputVal = this.value;
-        if (inputVal.startsWith(' ') && currentWord[0] !== ' ') { this.value = ''; return; }
+    // ─────────────────────────────────────────────────────────
+    // [1단계-C] 한글 IME Composition 이벤트 분리
+    // ─────────────────────────────────────────────────────────
+    typingInput.addEventListener('compositionstart', () => {
+        isComposing = true;
+    });
+
+    typingInput.addEventListener('compositionend', () => {
+        isComposing = false;
+        // compositionend 후 일부 브라우저에서 input이 발화 안 될 수 있어 직접 처리
+        handleInput(typingInput.value);
+    });
+
+    // [1단계-D] input 이벤트: 조합 중에는 건너뜀
+    typingInput.addEventListener('input', function () {
+        if (isComposing) return;
+        handleInput(this.value);
+    });
+
+    // ─────────────────────────────────────────────────────────
+    // [1단계-D] 입력 처리 로직을 독립 함수로 분리
+    // ─────────────────────────────────────────────────────────
+    function handleInput(inputVal) {
+        if (!isPracticing || isTransitioning) { if (isTransitioning) typingInput.value = lastValidValue; return; }
+        if (inputVal.startsWith(' ') && currentWord[0] !== ' ') { typingInput.value = ''; return; }
         if (sessionStartTime === 0 && inputVal.length > 0) sessionStartTime = Date.now();
 
         if (inputVal.length === 0) {
             if (sessionPhysicalStrokes > 0) sessionPhysicalStrokes += 1;
             lastValidValue = ""; lastErrorValue = ""; isErrorState = false; updateTargetTextDisplay("");
-            this.classList.remove('text-error', 'shake'); feedbackMsg.style.color = '#8A8A8A'; feedbackMsg.innerText = "타자를 계속하세요.";
+            typingInput.classList.remove('text-error', 'shake'); feedbackMsg.style.color = '#8A8A8A'; feedbackMsg.innerText = "타자를 계속하세요.";
             if (totalAccumulatedStrokes === 0) sessionStartTime = 0;
             lastInputJasoLength = 0; lastInputValRaw = "";
             return;
@@ -549,7 +590,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (currentUser.errorMode === 'stop' && isErrorState) {
             if (inputVal.length > lastErrorValue.length || Hangul.disassemble(inputVal).length > Hangul.disassemble(lastErrorValue).length) {
-                this.value = lastErrorValue; this.classList.add('shake'); setTimeout(() => this.classList.remove('shake'), 200); return;
+                typingInput.value = lastErrorValue; typingInput.classList.add('shake'); setTimeout(() => typingInput.classList.remove('shake'), 200); return;
             }
         }
 
@@ -560,17 +601,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         lastInputJasoLength = currentJasoLen; lastInputValRaw = inputVal;
 
         let inputJaso = Hangul.disassemble(inputVal); let targetJaso = Hangul.disassemble(currentWord);
-        let mismatchIndex = -1; let isError = false;
-        for (let i = 0; i < inputJaso.length; i++) { if (inputJaso[i] !== targetJaso[i]) { isError = true; mismatchIndex = i; break; } }
+        let isError = false;
+        for (let i = 0; i < inputJaso.length; i++) { if (inputJaso[i] !== targetJaso[i]) { isError = true; break; } }
 
         if (isError) {
             if (!isErrorState) { totalErrorCount++; currentCombo = 0; document.getElementById('combo-wrap').style.opacity = 0; }
             isErrorState = true; lastErrorValue = inputVal;
-            this.classList.add('text-error'); feedbackMsg.style.color = '#FF4757'; feedbackMsg.innerText = "틀렸습니다! 백스페이스(←)로 지우세요.";
+            typingInput.classList.add('text-error'); feedbackMsg.style.color = '#FF4757'; feedbackMsg.innerText = "틀렸습니다! 백스페이스(←)로 지우세요.";
         } else {
             isErrorState = false; lastValidValue = inputVal; updateTargetTextDisplay(inputVal);
-            this.classList.remove('text-error', 'shake'); feedbackMsg.style.color = '#5BC044';
-            feedbackMsg.innerText = (this.value === currentWord && requireEnter) ? "엔터(Enter) 키를 눌러 다음으로 넘어가세요 ⏎" : "잘하고 있습니다!";
+            typingInput.classList.remove('text-error', 'shake'); feedbackMsg.style.color = '#5BC044';
+            feedbackMsg.innerText = (typingInput.value === currentWord && requireEnter) ? "엔터(Enter) 키를 눌러 다음으로 넘어가세요 ⏎" : "잘하고 있습니다!";
         }
 
         if (sessionStartTime > 0) {
@@ -585,8 +626,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (totalCurrentExpected > 0) accuracy = Math.max(0, Math.floor(((totalCurrentExpected - totalErrorCount) / totalCurrentExpected) * 100));
             accDisplay.innerText = accuracy;
         }
-        if (this.value === currentWord && !requireEnter && !isErrorState) processWordCompletion();
-    });
+        if (typingInput.value === currentWord && !requireEnter && !isErrorState) processWordCompletion();
+    }
 
     function endPracticeSession(isCompleted) {
         isPracticing = false; typingInput.value = ''; lastValidValue = '';
@@ -644,7 +685,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const response = await fetch(GAS_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({
                         action: 'generateAI',
                         prompt: prompt,
