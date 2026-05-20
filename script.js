@@ -800,6 +800,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         isComposing = false;
         // compositionend 후 일부 브라우저에서 input이 발화 안 될 수 있어 직접 처리
         handleInput(typingInput.value);
+
+        // 🔑 자리 연습 자동 넘김: 단일 자소(ㅁ,ㄴ 등) 입력 시 즉시 다음으로
+        if (currentCategory === "자리 연습" && isPracticing && !isTransitioning && !isErrorState) {
+            const inputJaso = Hangul.disassemble(typingInput.value);
+            const targetJaso = Hangul.disassemble(currentWord);
+            if (inputJaso.length >= targetJaso.length) {
+                let match = true;
+                for (let i = 0; i < targetJaso.length; i++) {
+                    if (inputJaso[i] !== targetJaso[i]) { match = false; break; }
+                }
+                if (match) {
+                    processWordCompletion();
+                }
+            }
+        }
     });
 
     // [1단계-D] input 이벤트: 조합 중에는 건너뜀
