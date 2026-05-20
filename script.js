@@ -4,20 +4,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 🚨 선생님 설정 구역 — 여기만 수정하세요!
     // ====================================================
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxV6okoAMnBKIjw7Y36eJnb09Ztk48KRZw-fHwIdsIWZeYp0qbDkMitef_QmlXIul6eNg/exec";
-
-    // 📌 반 목록: 반을 추가/삭제하려면 이 배열만 수정하세요!
-    const DEFAULT_CLASSES = ["1학년 1반", "1학년 2반"];
+    // ====================================================
+    // ✅ 반 목록은 이제 하드코딩 없이 서버/로컬 데이터에서 자동으로 불러옵니다.
     // ====================================================
 
     let adminPassword = localStorage.getItem('adminPw') || '0000';
 
-    // DEFAULT_CLASSES 기반으로 초기 데이터 구조 생성
+    // 빈 상태로 시작 — 서버 또는 로컬에서 채워짐
     let classData = {};
     let studentData = {};
-    DEFAULT_CLASSES.forEach(cls => {
-        classData[cls] = { current: 0, target: 5000, reward: "상상체험실 가기", indivReward: "자유 휴식권", lastLoginDate: '' };
-        studentData[cls] = [];
-    });
+
+    // 데이터가 전혀 없을 때 기본 반 하나를 생성하는 헬퍼
+    function ensureAtLeastOneClass() {
+        if (Object.keys(classData).length === 0) {
+            classData["1학년 1반"] = { current: 0, target: 5000, reward: "상상체험실 가기", indivReward: "자유 휴식권", lastLoginDate: '' };
+            studentData["1학년 1반"] = [];
+        }
+    }
 
     let currentUser = null;
     let currentUserClass = null;
@@ -40,11 +43,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (data.adminPassword) adminPassword = data.adminPassword;
             }
 
-            // DEFAULT_CLASSES 기준으로 누락된 반 보정 (루프로 처리)
-            DEFAULT_CLASSES.forEach(cls => {
-                if (!classData[cls]) classData[cls] = { current: 0, target: 5000, reward: "상상체험실 가기", indivReward: "자유 휴식권", lastLoginDate: '' };
+            // classData에 있는 반 기준으로 studentData 누락분 보정 (동적)
+            Object.keys(classData).forEach(cls => {
                 if (!studentData[cls]) studentData[cls] = [];
             });
+            // 데이터가 전혀 없을 때 기본 반 보장
+            ensureAtLeastOneClass();
 
             document.getElementById('server-status').innerText = "🟢 실시간 구글 시트 연결됨";
         } else {
@@ -57,26 +61,60 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let parsed = JSON.parse(rawData);
                 if (parsed.studentData) studentData = parsed.studentData;
                 if (parsed.classData) classData = parsed.classData;
-            } else {
-                studentData[DEFAULT_CLASSES[0]].push({ name: "김에이스", errorMode: "stop", allowedMenus: ["자리 연습", "낱말 연습", "문장 연습"], stats: { maxWpm: 0 }, weakness: {}, totalScore: 0, earnedTicket: false, completedMenus: [], mission: { type: 'score', val: 5000 } });
             }
+            // 데이터가 전혀 없을 때 기본 반 보장
+            ensureAtLeastOneClass();
         }
     } catch (error) {
         console.error("데이터 불러오기 실패:", error);
         document.getElementById('server-status').innerText = "⚠️ 서버 연결 실패 (로컬 모드)";
+        // 서버 오류 시에도 로컬 데이터 복구 시도
+        try {
+            let rawData = localStorage.getItem('localStudentData');
+            if (rawData) {
+                let parsed = JSON.parse(rawData);
+                if (parsed.studentData) studentData = parsed.studentData;
+                if (parsed.classData) classData = parsed.classData;
+            }
+        } catch (e) { console.error("로컬 데이터 복구 실패:", e); }
+        ensureAtLeastOneClass();
     }
 
     // ====================================================
     // 2. 구글 서버(GAS) 데이터 저장 로직
     // ====================================================
-    window.saveData = function () {
-        localStorage.setItem('adminPw', adminPassword);
 
+    // 항상 로컬에 전체 저장 (오프라인 fallback)
+    function saveLocal() {
+        localStorage.setItem('adminPw', adminPassword);
         localStorage.setItem('localStudentData', JSON.stringify({
             studentData: studentData,
             classData: classData
         }));
+    }
 
+    // 🔑 핵심 함수: 특정 학생 1명의 데이터만 GAS에 병합 저장
+    // → 동시 접속 시 다른 학생 데이터를 덮어쓰지 않음
+    window.saveStudentPatch = function (cls, studentObj) {
+        saveLocal();
+        if (GAS_URL && GAS_URL !== "") {
+            fetch(GAS_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    action: 'patchStudent',
+                    cls: cls,
+                    student: studentObj,
+                    classInfo: classData[cls]   // 반 공동 점수도 함께 전송
+                })
+            }).catch(err => console.error("학생 패치 저장 오류:", err));
+        }
+    };
+
+    // 교사 설정 변경(반 추가/삭제, 학생 추가/삭제 등) 시 전체 저장
+    window.saveData = function () {
+        saveLocal();
         if (GAS_URL && GAS_URL !== "") {
             fetch(GAS_URL, {
                 method: 'POST',
@@ -90,7 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         adminPassword: adminPassword
                     }
                 })
-            }).catch(err => console.error("구글 시트 저장 오류:", err));
+            }).catch(err => console.error("구글 시트 전체 저장 오류:", err));
         }
     };
 
@@ -288,11 +326,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ====================================================
     const ALL_MENUS = ['기본자리', '왼손 윗자리', '왼손 아랫자리', '가운데 자리', '오른손 윗자리', '오른손 아랫자리', '낱말 연습', '문장 연습'];
 
+    // ─── 반 추가 ───────────────────────────────────────
+    document.getElementById('add-class-btn').addEventListener('click', () => {
+        const newClassName = prompt('새 반 이름을 입력하세요\n(예: 2학년 1반)');
+        if (!newClassName || !newClassName.trim()) return;
+        const trimmed = newClassName.trim();
+        if (classData[trimmed]) {
+            showAlert(`"${trimmed}" 반은 이미 존재합니다!`);
+            return;
+        }
+        classData[trimmed] = { current: 0, target: 5000, reward: "상상체험실 가기", indivReward: "자유 휴식권", lastLoginDate: '' };
+        studentData[trimmed] = [];
+        window.saveData();
+        populateClassSelects();
+        // 새로 만든 반을 드롭다운에서 선택
+        document.getElementById('admin-class').value = trimmed;
+        renderStudentTable();
+        showAlert(`✅ "${trimmed}" 반이 추가되었습니다!`);
+    });
+
+    // ─── 반 삭제 ───────────────────────────────────────
+    document.getElementById('delete-class-btn').addEventListener('click', () => {
+        const selectedClass = document.getElementById('admin-class').value;
+        if (!selectedClass) return;
+        const classes = Object.keys(classData);
+        if (classes.length <= 1) {
+            showAlert('마지막 반은 삭제할 수 없습니다!');
+            return;
+        }
+        if (!confirm(`"${selectedClass}" 반 전체(학생 ${studentData[selectedClass].length}명 포함)를 삭제할까요?\n이 작업은 되돌릴 수 없습니다!`)) return;
+        delete classData[selectedClass];
+        delete studentData[selectedClass];
+        window.saveData();
+        populateClassSelects();
+        renderStudentTable();
+        showAlert(`🗑️ "${selectedClass}" 반이 삭제되었습니다.`);
+    });
+
     document.getElementById('add-student-btn').addEventListener('click', () => {
         let selectedClass = document.getElementById('admin-class').value;
         let newName = document.getElementById('admin-new-student').value.trim();
         if (newName) {
-            studentData[selectedClass].push({ name: newName, errorMode: "stop", allowedMenus: ["자리 연습", "낱말 연습"], stats: { maxWpm: 0 }, weakness: {}, totalScore: 0, earnedTicket: false, completedMenus: [], mission: { type: 'score', val: 5000 } });
+            studentData[selectedClass].push({ name: newName, errorMode: "stop", allowedMenus: ["자리 연습", "낱말 연습"], stats: { maxWpm: 0 }, weakness: {}, totalScore: 0, earnedTicket: false, completedMenus: [], mission: { type: 'wpm', val: 80 } });
             window.saveData(); document.getElementById('admin-new-student').value = '';
             renderStudentTable();
         }
@@ -306,7 +381,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         studentData[selectedClass].forEach((student, index) => {
             let tr = document.createElement('tr');
             const UI_MENUS = ['자리 연습', '낱말 연습', '문장 연습'];
-            let checkboxes = UI_MENUS.map(menu => `<label class="checkbox-label" style="font-weight:900; display:inline-block; margin-right:8px; margin-bottom:5px;"><input type="checkbox" class="menu-chk" data-cls="${selectedClass}" data-idx="${index}" data-menu="${menu}" ${student.allowedMenus.includes(menu) ? 'checked' : ''}> ${menu}</label>`).join('');
+            let checkboxes = UI_MENUS.map(menu => `<label class="checkbox-label" style="font-weight:900; display:inline-block; margin-right:6px; margin-bottom:3px; font-size:12px;"><input type="checkbox" class="menu-chk" data-cls="${selectedClass}" data-idx="${index}" data-menu="${menu}" ${student.allowedMenus.includes(menu) ? 'checked' : ''}> ${menu}</label>`).join('');
 
             let weakStr = "없음";
             if (student.weakness && Object.keys(student.weakness).length > 0) {
@@ -314,28 +389,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                 weakStr = sortedWeakness.slice(0, 3).map(x => x[0]).join(', ');
             }
 
-            // [개선] 오늘 점수 / 목표 점수 표시
+            // WPM 기반 미션 표시
+            const wpmTarget = (student.mission && student.mission.val) || 80;
+            const maxWpm = student.stats?.maxWpm || 0;
             const todayScore = student.totalScore || 0;
-            const missionVal = (student.mission && student.mission.val) || 5000;
-            const scorePercent = Math.min(100, Math.floor((todayScore / missionVal) * 100));
-            const scoreBadgeColor = student.earnedTicket ? '#5BC044' : (scorePercent >= 50 ? '#FF6B35' : '#888');
+            const ticketStatus = student.earnedTicket ? '✅ 달성' : (maxWpm > 0 ? `${maxWpm}타` : '-');
+            const statusColor = student.earnedTicket ? '#5BC044' : '#888';
 
             tr.innerHTML = `
-                <td style="font-weight:900; font-size:16px;">${student.name}<br>
-                    <button class="ai-btn ai-analyze-btn" data-name="${student.name}" data-wpm="${student.stats.maxWpm}" data-weak="${weakStr}" data-idx="${index}" style="margin-top:10px; padding:8px 12px; font-size:12px; border-radius:8px; width:100%;">✨ AI 진단 및 칭찬</button>
+                <td style="font-weight:900; font-size:14px;">${student.name}<br>
+                    <button class="ai-btn ai-analyze-btn" data-name="${student.name}" data-wpm="${maxWpm}" data-weak="${weakStr}" data-idx="${index}" style="margin-top:6px; padding:5px 8px; font-size:11px; border-radius:6px; width:100%;">✨ AI 진단</button>
                     <div id="ai-feedback-${index}" class="ai-feedback-box"></div>
                 </td>
-                <td>${window.getRankBadgeHTML(student.stats.maxWpm)}<div style="margin-top:5px; font-weight:700; color:#5BC044;">${student.stats.maxWpm}타</div></td>
-                <td style="text-align:center; font-weight:900; font-size:15px;">
-                    <div style="color:${scoreBadgeColor}; font-size:20px; margin-bottom:4px;">${todayScore.toLocaleString()}점</div>
-                    <div style="background:#F0F0F0; border-radius:8px; height:10px; overflow:hidden; margin-bottom:4px;">
-                        <div style="background:${scoreBadgeColor}; height:100%; width:${scorePercent}%; border-radius:8px; transition:width 0.4s;"></div>
-                    </div>
-                    <div style="font-size:12px; color:#888;">목표 ${missionVal.toLocaleString()}점의 ${scorePercent}%${student.earnedTicket ? ' ✅' : ''}</div>
+                <td>${window.getRankBadgeHTML(maxWpm)}<div style="margin-top:4px; font-weight:700; color:#5BC044; font-size:13px;">${maxWpm}타</div></td>
+                <td style="text-align:center;">
+                    <input type="number" class="wpm-goal-input" data-cls="${selectedClass}" data-idx="${index}" value="${wpmTarget}" min="10" max="500" step="10" style="width:60px; padding:6px; font-size:14px; font-weight:900; text-align:center; border:2px solid #FFE485; border-radius:8px;">
+                    <div style="font-size:11px; color:#888; margin-top:3px;">타/분</div>
+                </td>
+                <td style="text-align:center; font-weight:900; font-size:13px;">
+                    <div style="color:${statusColor}; font-size:16px; margin-bottom:3px;">${ticketStatus}</div>
+                    <div style="font-size:11px; color:#888;">오늘 ${todayScore.toLocaleString()}점</div>
                 </td>
                 <td style="text-align:left;">
-                    <select class="err-mode-sel" data-cls="${selectedClass}" data-idx="${index}" style="padding: 5px; font-size:13px; margin-bottom:5px; width:100%; border:2px solid #FFE485; border-radius:8px;">
-                        <option value="stop" ${student.errorMode === 'stop' ? 'selected' : ''}>🛡️ 오타 시 잠김 모드</option>
+                    <select class="err-mode-sel" data-cls="${selectedClass}" data-idx="${index}" style="padding:4px; font-size:12px; margin-bottom:4px; width:100%; border:2px solid #FFE485; border-radius:6px;">
+                        <option value="stop" ${student.errorMode === 'stop' ? 'selected' : ''}>🛡️ 오타 시 잠김</option>
                         <option value="hint" ${student.errorMode === 'hint' ? 'selected' : ''}>🚦 힌트만 주고 통과</option>
                     </select><br>${checkboxes}
                 </td>
@@ -347,6 +424,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('.err-mode-sel').forEach(sel => { sel.addEventListener('change', (e) => { studentData[e.target.dataset.cls][e.target.dataset.idx].errorMode = e.target.value; window.saveData(); }); });
         document.querySelectorAll('.menu-chk').forEach(chk => { chk.addEventListener('change', (e) => { let cls = e.target.dataset.cls, idx = e.target.dataset.idx, menu = e.target.dataset.menu; let menus = studentData[cls][idx].allowedMenus; if (e.target.checked) menus.push(menu); else studentData[cls][idx].allowedMenus = menus.filter(m => m !== menu); window.saveData(); }); });
         document.querySelectorAll('.delete-btn').forEach(btn => { btn.addEventListener('click', (e) => { if (confirm("정말 삭제하시겠습니까?")) { studentData[e.target.dataset.cls].splice(e.target.dataset.idx, 1); window.saveData(); renderStudentTable(); } }); });
+        // WPM 목표 입력창 이벤트 (저장 버튼과 함께 일괄 저장되므로 여기서는 로컬만 반영)
+        document.querySelectorAll('.wpm-goal-input').forEach(inp => {
+            inp.addEventListener('change', (e) => {
+                const cls = e.target.dataset.cls, idx = e.target.dataset.idx;
+                const val = parseInt(e.target.value) || 80;
+                if (!studentData[cls][idx].mission) studentData[cls][idx].mission = { type: 'wpm', val: 80 };
+                studentData[cls][idx].mission.val = Math.max(10, Math.min(500, val));
+                e.target.value = studentData[cls][idx].mission.val;
+            });
+        });
 
         document.querySelectorAll('.ai-analyze-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -368,7 +455,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateChart();
     }
 
-    document.getElementById('admin-class').addEventListener('change', renderStudentTable);
+    // 반 선택 변경 시 설정 패널도 갱신
+    document.getElementById('admin-class').addEventListener('change', () => {
+        renderStudentTable();
+        syncClassSettingsPanel();
+    });
+
+    // 반 설정 패널 동기화
+    function syncClassSettingsPanel() {
+        const cls = document.getElementById('admin-class').value;
+        const cData = classData[cls];
+        if (!cData) return;
+        document.getElementById('setting-target').value = cData.target || 5000;
+        document.getElementById('setting-reward').value = cData.reward || '상상체험실 가기';
+        document.getElementById('setting-indiv-reward').value = cData.indivReward || '자유 휴식권';
+    }
+
+    // 반 설정 저장 버튼
+    document.getElementById('save-class-settings-btn').addEventListener('click', () => {
+        const cls = document.getElementById('admin-class').value;
+        classData[cls].target = parseInt(document.getElementById('setting-target').value) || 5000;
+        classData[cls].reward = document.getElementById('setting-reward').value.trim() || '상상체험실 가기';
+        classData[cls].indivReward = document.getElementById('setting-indiv-reward').value.trim() || '자유 휴식권';
+
+        // 학생별 WPM 목표도 일괄 저장
+        document.querySelectorAll('.wpm-goal-input').forEach(inp => {
+            const idx = inp.dataset.idx;
+            const val = parseInt(inp.value) || 80;
+            if (!studentData[cls][idx].mission) studentData[cls][idx].mission = { type: 'wpm', val: 80 };
+            studentData[cls][idx].mission.val = Math.max(10, Math.min(500, val));
+        });
+
+        window.saveData();
+        showAlert('✅ 반 설정이 저장되었습니다!');
+    });
+
+    // 초기 로드 시 설정 패널 동기화
+    setTimeout(syncClassSettingsPanel, 100);
 
     function updateChart() {
         let selectedClass = document.getElementById('admin-class').value;
@@ -389,13 +512,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 5. 랭킹, 메뉴, 타자 연습 로직
     // ====================================================
     const BADGE_DEFS = [
-        { req: 30, name: "Lv.1 씨앗", icon: "fa-seedling", color: "color-lv1" }, { req: 50, name: "Lv.2 새싹", icon: "fa-leaf", color: "color-lv2" },
-        { req: 60, name: "Lv.3 잎새", icon: "fa-leaf", color: "color-lv2" }, { req: 70, name: "Lv.4 가지", icon: "fa-leaf", color: "color-lv3" },
-        { req: 80, name: "Lv.5 나무", icon: "fa-tree", color: "color-lv3" }, { req: 90, name: "Lv.6 숲", icon: "fa-tree", color: "color-lv3" },
-        { req: 100, name: "동메달", icon: "fa-award", color: "color-bronze" }, { req: 120, name: "동메달+", icon: "fa-award", color: "color-bronze" },
-        { req: 140, name: "동메달++", icon: "fa-award", color: "color-bronze" }, { req: 160, name: "동메달+++", icon: "fa-award", color: "color-bronze" },
-        { req: 180, name: "동메달++++", icon: "fa-award", color: "color-bronze" }, { req: 200, name: "은메달", icon: "fa-medal", color: "color-silver" },
-        { req: 250, name: "금메달", icon: "fa-crown", color: "color-gold" }, { req: 300, name: "전설의 타자", icon: "fa-gem", color: "color-ace" }
+        { req: 30,  name: "Lv.1 씨앗",    icon: "fa-seedling", color: "color-lv1",    tier: "seed"   },
+        { req: 50,  name: "Lv.2 새싹",    icon: "fa-leaf",     color: "color-lv2",    tier: "sprout" },
+        { req: 60,  name: "Lv.3 잎새",    icon: "fa-leaf",     color: "color-lv2",    tier: "sprout" },
+        { req: 70,  name: "Lv.4 가지",    icon: "fa-leaf",     color: "color-lv3",    tier: "branch" },
+        { req: 80,  name: "Lv.5 나무",    icon: "fa-tree",     color: "color-lv3",    tier: "branch" },
+        { req: 90,  name: "Lv.6 숲",      icon: "fa-tree",     color: "color-lv3",    tier: "branch" },
+        { req: 100, name: "동메달",        icon: "fa-award",    color: "color-bronze", tier: "bronze" },
+        { req: 120, name: "동메달+",       icon: "fa-award",    color: "color-bronze", tier: "bronze" },
+        { req: 140, name: "동메달++",      icon: "fa-award",    color: "color-bronze", tier: "bronze" },
+        { req: 160, name: "동메달+++",     icon: "fa-award",    color: "color-bronze", tier: "bronze" },
+        { req: 180, name: "동메달++++",    icon: "fa-award",    color: "color-bronze", tier: "bronze" },
+        { req: 200, name: "은메달",        icon: "fa-medal",    color: "color-silver", tier: "silver" },
+        { req: 250, name: "금메달",        icon: "fa-crown",    color: "color-gold",   tier: "gold"   },
+        { req: 300, name: "전설의 타자",   icon: "fa-gem",      color: "color-ace",    tier: "legend" }
     ];
 
     window.getRankBadgeHTML = function (wpm) {
@@ -409,9 +539,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateClassGoalUI() {
         let cData = classData[currentUserClass];
         if (!cData) return;
-        let percent = Math.min(100, (cData.current / cData.target) * 100).toFixed(1);
-        document.querySelectorAll('.class-goal-percent').forEach(el => el.innerHTML = `${percent}% 달성 중!`);
+        let students = studentData[currentUserClass] || [];
+        let earnedCount = students.filter(s => s.earnedTicket).length;
+        let totalCount = students.length;
+
+        // 하이브리드 표시: X/Y명 달성 + 보너스 점수
+        let memberEl = document.getElementById('class-member-status');
+        if (memberEl) memberEl.textContent = `${earnedCount}/${totalCount}명 달성`;
+
+        let rewardEl = document.getElementById('class-reward-display-menu');
+        if (rewardEl) rewardEl.textContent = cData.reward || '상상체험실 가기';
+
+        let bonusEl = document.getElementById('class-bonus-display');
+        if (bonusEl) bonusEl.textContent = `${(cData.current || 0).toLocaleString()} / ${(cData.target || 5000).toLocaleString()}`;
+
+        let percent = cData.target > 0 ? Math.min(100, (cData.current / cData.target) * 100).toFixed(1) : 0;
         document.querySelectorAll('.class-goal-fill').forEach(el => el.style.width = percent + '%');
+
+        // 반 공동 보상 달성 체크
+        let allEarned = totalCount > 0 && earnedCount >= totalCount;
+        let bonusReached = cData.current >= cData.target;
+        let goalContainer = document.getElementById('class-goal-menu-container');
+        if (goalContainer) {
+            if (allEarned && bonusReached) {
+                goalContainer.style.borderColor = '#A855F7';
+                goalContainer.style.background = '#FAF5FF';
+            } else if (allEarned || bonusReached) {
+                goalContainer.style.borderColor = '#5BC044';
+                goalContainer.style.background = '#F0FFF4';
+            } else {
+                goalContainer.style.borderColor = '#FFE485';
+                goalContainer.style.background = '#FFFFFF';
+            }
+        }
     }
 
     function renderMainMenu() {
@@ -419,10 +579,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('user-rank-badge').innerHTML = window.getRankBadgeHTML(currentUser.stats.maxWpm);
 
         let missionBox = document.getElementById('individual-mission');
+        const wpmTarget = currentUser.mission?.val ?? 80;
+
         if (currentUser.earnedTicket) {
-            missionBox.innerText = `✅ 오늘의 미션 완료! 보너스 점수 적립 중!`; missionBox.classList.add('completed');
+            missionBox.innerHTML = `✅ 미션 완료! <strong>${wpmTarget}타 달성!</strong> 🎟️ 보너스 점수 적립 중!`;
+            missionBox.classList.add('completed');
         } else {
-            missionBox.innerText = `오늘 모은 점수: ${currentUser.totalScore} 점`; missionBox.classList.remove('completed');
+            missionBox.innerHTML = `🎯 오늘 미션: <strong>${wpmTarget}타</strong> 달성하기!`;
+            missionBox.classList.remove('completed');
         }
 
         updateClassGoalUI();
@@ -456,11 +620,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('profile-student-name').innerText = currentUser.name;
         document.getElementById('profile-max-wpm').innerText = currentUser.stats.maxWpm;
         let container = document.getElementById('badge-container'); container.innerHTML = '';
+        const wpm = currentUser.stats.maxWpm;
         BADGE_DEFS.forEach(badge => {
-            let isUnlocked = currentUser.stats.maxWpm >= badge.req;
-            let card = document.createElement('div'); card.className = `badge-card ${isUnlocked ? 'unlocked' : 'badge-locked'}`;
-            let iconHtml = isUnlocked ? `<i class="fa-solid ${badge.icon}"></i>` : `<i class="fa-solid fa-lock"></i>`;
-            card.innerHTML = `<div class="badge-icon ${isUnlocked ? badge.color : ''}">${iconHtml}</div><div class="badge-title">${badge.name}</div><div class="badge-req">${badge.req}타 달성</div>`;
+            let isUnlocked = wpm >= badge.req;
+            // 방금 해금된 배지(이 배지는 달성, 다음 배지는 미달성)
+            const badgeIdx = BADGE_DEFS.indexOf(badge);
+            const isNewest = isUnlocked && (badgeIdx === BADGE_DEFS.length - 1 || wpm < BADGE_DEFS[badgeIdx + 1].req);
+
+            let card = document.createElement('div');
+            card.className = [
+                'badge-card',
+                isUnlocked ? `unlocked tier-${badge.tier}` : 'badge-locked',
+                isNewest ? 'badge-newest' : ''
+            ].join(' ');
+
+            let iconHtml = isUnlocked
+                ? `<i class="fa-solid ${badge.icon}"></i>`
+                : `<i class="fa-solid fa-lock"></i>`;
+
+            card.innerHTML = `
+                <div class="badge-icon ${isUnlocked ? badge.color : ''}">${iconHtml}</div>
+                <div class="badge-title">${badge.name}</div>
+                <div class="badge-req">${badge.req}타 달성</div>
+                ${isNewest ? '<div class="badge-now">✨ 현재 등급</div>' : ''}
+            `;
             container.appendChild(card);
         });
         showScreen('slide-profile');
@@ -701,14 +884,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         currentUser.totalScore += currentSessionScore;
-        classData[currentUserClass].current += currentSessionScore;
 
-        if (currentUser.totalScore >= 5000 && !currentUser.earnedTicket) {
+        // 🔑 WPM 기반 티켓 체크 (오늘 세션 타수 기준)
+        const wpmTarget = currentUser.mission?.val ?? 80;
+        if (currentWpm >= wpmTarget && !currentUser.earnedTicket && isCompleted) {
             currentUser.earnedTicket = true;
             setTimeout(showTicketModal, 500);
         }
 
-        window.saveData();
+        // 티켓 획득 후 추가 연습만 반 공동 점수에 적립
+        if (currentUser.earnedTicket) {
+            classData[currentUserClass].current += currentSessionScore;
+        }
+
+        // 학생 1명 데이터만 GAS에 병합 저장 (동시 접속 안전)
+        window.saveStudentPatch(currentUserClass, currentUser);
 
         if (isCompleted) {
             document.getElementById('result-main-stat').innerHTML = `<span id="final-wpm">${currentWpm}</span> 타/분`;
@@ -733,8 +923,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     document.getElementById('end-practice-btn').addEventListener('click', () => endPracticeSession(false));
     document.getElementById('back-to-menu-btn').addEventListener('click', () => {
-        if (currentUser.totalScore >= 5000 && !currentUser.earnedTicket) { currentUser.earnedTicket = true; window.saveData(); showTicketModal(); }
-        else { window.goToMenu(); }
+        // WPM 기반 미션은 endPracticeSession에서 이미 체크됨 → 바로 메뉴로
+        window.goToMenu();
     });
 
     document.getElementById('logout-btn').addEventListener('click', () => { updateStudentSelects(); showScreen('student-login-screen'); });
